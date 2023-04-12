@@ -6,8 +6,9 @@ namespace Crackdown_Installer
 {
 	internal static class InstallerWrapper
 	{
+		
+		public static InstallerManager? instMgr;
 
-		static InstallerManager? imgr;
 		/// <summary>
 		///  The main entry point for the application.
 		/// </summary>
@@ -17,9 +18,9 @@ namespace Crackdown_Installer
 
 			//instantiate new client to handle all outgoing http reqs
 			HttpClient client = new HttpClient();
-			client.Timeout = TimeSpan.FromMinutes(2);
-			
-			imgr = new(client);
+			client.Timeout = TimeSpan.FromSeconds(15);
+
+			instMgr = new(client);
 
 
 			// To customize application configuration such as set high DPI settings or default font,

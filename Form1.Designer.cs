@@ -29,19 +29,348 @@
 		private void InitializeComponent()
 		{
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
+			panel_stage1 = new Panel();
+			label_stage1Title = new Label();
+			linkLabelWiki = new LinkLabel();
+			linkLabelHomepage = new LinkLabel();
+			button_start = new Button();
+			linkLabelDiscord = new LinkLabel();
+			button_quit = new Button();
+			folderBrowserDialog1 = new FolderBrowserDialog();
+			richTextBox1 = new RichTextBox();
+			panel_stage2 = new Panel();
+			label_stage2Title = new Label();
+			label_browseInstallPathDesc = new Label();
+			button_browseInstallPath = new Button();
+			button_resetInstallPath = new Button();
+			panel_stage3 = new Panel();
+			label_modDependenciesItemMouseverDescription = new Label();
+			label_modDependenciesItemMouseoverTitle = new Label();
+			checkedListBox_dummy = new CheckedListBox();
+			label_stage3Title = new Label();
+			label_stage3Desc = new Label();
+			button_detectExistingMods = new Button();
+			button_prevStage = new Button();
+			button_nextStage = new Button();
+			panel_navigation = new Panel();
+			panel_stage4 = new Panel();
+			panel_stage1.SuspendLayout();
+			panel_stage2.SuspendLayout();
+			panel_stage3.SuspendLayout();
+			panel_navigation.SuspendLayout();
 			SuspendLayout();
+			// 
+			// panel_stage1
+			// 
+			panel_stage1.Controls.Add(label_stage1Title);
+			panel_stage1.Controls.Add(linkLabelWiki);
+			panel_stage1.Controls.Add(linkLabelHomepage);
+			panel_stage1.Controls.Add(button_start);
+			panel_stage1.Controls.Add(linkLabelDiscord);
+			panel_stage1.Location = new Point(22, 51);
+			panel_stage1.Name = "panel_stage1";
+			panel_stage1.Size = new Size(201, 274);
+			panel_stage1.TabIndex = 1;
+			// 
+			// label_stage1Title
+			// 
+			label_stage1Title.AutoSize = true;
+			label_stage1Title.Location = new Point(11, 12);
+			label_stage1Title.Name = "label_stage1Title";
+			label_stage1Title.Size = new Size(229, 15);
+			label_stage1Title.TabIndex = 4;
+			label_stage1Title.Text = "Welcome to the Crackdown Mod Installer!";
+			label_stage1Title.Click += label_stage1Title_Click;
+			// 
+			// linkLabelWiki
+			// 
+			linkLabelWiki.AutoSize = true;
+			linkLabelWiki.Location = new Point(11, 85);
+			linkLabelWiki.Name = "linkLabelWiki";
+			linkLabelWiki.Size = new Size(121, 15);
+			linkLabelWiki.TabIndex = 3;
+			linkLabelWiki.TabStop = true;
+			linkLabelWiki.Text = "Crackdown Mod Wiki";
+			linkLabelWiki.LinkClicked += linkLabelWiki_LinkClicked;
+			// 
+			// linkLabelHomepage
+			// 
+			linkLabelHomepage.AutoSize = true;
+			linkLabelHomepage.Location = new Point(6, 62);
+			linkLabelHomepage.Name = "linkLabelHomepage";
+			linkLabelHomepage.Size = new Size(140, 15);
+			linkLabelHomepage.TabIndex = 2;
+			linkLabelHomepage.TabStop = true;
+			linkLabelHomepage.Text = "Crackdown Mod Website";
+			linkLabelHomepage.LinkClicked += linkLabelHomepage_LinkClicked;
+			// 
+			// button_start
+			// 
+			button_start.Location = new Point(15, 229);
+			button_start.Name = "button_start";
+			button_start.Size = new Size(108, 27);
+			button_start.TabIndex = 3;
+			button_start.Text = "&Start";
+			button_start.UseVisualStyleBackColor = true;
+			button_start.Click += button_start_Click;
+			// 
+			// linkLabelDiscord
+			// 
+			linkLabelDiscord.AutoSize = true;
+			linkLabelDiscord.Location = new Point(9, 39);
+			linkLabelDiscord.Name = "linkLabelDiscord";
+			linkLabelDiscord.Size = new Size(138, 15);
+			linkLabelDiscord.TabIndex = 1;
+			linkLabelDiscord.TabStop = true;
+			linkLabelDiscord.Text = "Crackdown Mod Discord";
+			linkLabelDiscord.LinkClicked += linkLabelDiscord_LinkClicked;
+			// 
+			// button_quit
+			// 
+			button_quit.Anchor = AnchorStyles.Bottom;
+			button_quit.Location = new Point(742, 24);
+			button_quit.Name = "button_quit";
+			button_quit.Size = new Size(101, 28);
+			button_quit.TabIndex = 2;
+			button_quit.Text = "&Quit";
+			button_quit.UseVisualStyleBackColor = true;
+			button_quit.Click += button1_Click;
+			// 
+			// folderBrowserDialog1
+			// 
+			folderBrowserDialog1.Description = "Please select your PAYDAY 2 game install folder.";
+			folderBrowserDialog1.InitialDirectory = "C:/Users/";
+			folderBrowserDialog1.ShowHiddenFiles = true;
+			folderBrowserDialog1.ShowNewFolderButton = false;
+			folderBrowserDialog1.HelpRequest += folderBrowserDialog1_HelpRequest;
+			// 
+			// richTextBox1
+			// 
+			richTextBox1.AccessibleDescription = "The path to your PAYDAY 2 installation.";
+			richTextBox1.AccessibleName = "PAYDAY 2 folder path";
+			richTextBox1.DetectUrls = false;
+			richTextBox1.HideSelection = false;
+			richTextBox1.Location = new Point(16, 47);
+			richTextBox1.Multiline = false;
+			richTextBox1.Name = "richTextBox1";
+			richTextBox1.ReadOnly = true;
+			richTextBox1.ScrollBars = RichTextBoxScrollBars.Horizontal;
+			richTextBox1.Size = new Size(298, 30);
+			richTextBox1.TabIndex = 4;
+			richTextBox1.Text = "";
+			richTextBox1.WordWrap = false;
+			richTextBox1.TextChanged += richTextBox1_TextChanged;
+			// 
+			// panel_stage2
+			// 
+			panel_stage2.Controls.Add(label_stage2Title);
+			panel_stage2.Controls.Add(label_browseInstallPathDesc);
+			panel_stage2.Controls.Add(button_browseInstallPath);
+			panel_stage2.Controls.Add(button_resetInstallPath);
+			panel_stage2.Controls.Add(richTextBox1);
+			panel_stage2.Location = new Point(244, 51);
+			panel_stage2.Name = "panel_stage2";
+			panel_stage2.Size = new Size(484, 162);
+			panel_stage2.TabIndex = 6;
+			panel_stage2.Visible = false;
+			// 
+			// label_stage2Title
+			// 
+			label_stage2Title.AutoSize = true;
+			label_stage2Title.Location = new Point(18, 12);
+			label_stage2Title.Name = "label_stage2Title";
+			label_stage2Title.Size = new Size(145, 15);
+			label_stage2Title.TabIndex = 10;
+			label_stage2Title.Text = "Find your PAYDAY 2 folder";
+			// 
+			// label_browseInstallPathDesc
+			// 
+			label_browseInstallPathDesc.Location = new Point(16, 89);
+			label_browseInstallPathDesc.Name = "label_browseInstallPathDesc";
+			label_browseInstallPathDesc.Size = new Size(404, 36);
+			label_browseInstallPathDesc.TabIndex = 9;
+			label_browseInstallPathDesc.Text = "Before proceeding, please ensure that this path matches your PAYDAY 2 installation path.";
+			// 
+			// button_browseInstallPath
+			// 
+			button_browseInstallPath.Location = new Point(320, 47);
+			button_browseInstallPath.Name = "button_browseInstallPath";
+			button_browseInstallPath.Size = new Size(79, 30);
+			button_browseInstallPath.TabIndex = 8;
+			button_browseInstallPath.Text = "Browse...";
+			button_browseInstallPath.UseVisualStyleBackColor = true;
+			button_browseInstallPath.Click += button_browseInstallPath_Click;
+			// 
+			// button_resetInstallPath
+			// 
+			button_resetInstallPath.Location = new Point(405, 47);
+			button_resetInstallPath.Name = "button_resetInstallPath";
+			button_resetInstallPath.Size = new Size(66, 30);
+			button_resetInstallPath.TabIndex = 7;
+			button_resetInstallPath.Text = "Reset";
+			button_resetInstallPath.UseVisualStyleBackColor = true;
+			button_resetInstallPath.Click += button_resetInstallPath_Click;
+			// 
+			// panel_stage3
+			// 
+			panel_stage3.Controls.Add(label_modDependenciesItemMouseverDescription);
+			panel_stage3.Controls.Add(label_modDependenciesItemMouseoverTitle);
+			panel_stage3.Controls.Add(checkedListBox_dummy);
+			panel_stage3.Controls.Add(label_stage3Title);
+			panel_stage3.Controls.Add(label_stage3Desc);
+			panel_stage3.Controls.Add(button_detectExistingMods);
+			panel_stage3.Location = new Point(244, 230);
+			panel_stage3.Name = "panel_stage3";
+			panel_stage3.Size = new Size(701, 334);
+			panel_stage3.TabIndex = 7;
+			panel_stage3.Visible = false;
+			// 
+			// label_modDependenciesItemMouseverDescription
+			// 
+			label_modDependenciesItemMouseverDescription.AutoSize = true;
+			label_modDependenciesItemMouseverDescription.Location = new Point(387, 93);
+			label_modDependenciesItemMouseverDescription.Name = "label_modDependenciesItemMouseverDescription";
+			label_modDependenciesItemMouseverDescription.Size = new Size(290, 15);
+			label_modDependenciesItemMouseverDescription.TabIndex = 13;
+			label_modDependenciesItemMouseverDescription.Text = "Mouse over an item to see more information about it.";
+			// 
+			// label_modDependenciesItemMouseoverTitle
+			// 
+			label_modDependenciesItemMouseoverTitle.AutoSize = true;
+			label_modDependenciesItemMouseoverTitle.Location = new Point(405, 50);
+			label_modDependenciesItemMouseoverTitle.Name = "label_modDependenciesItemMouseoverTitle";
+			label_modDependenciesItemMouseoverTitle.Size = new Size(259, 15);
+			label_modDependenciesItemMouseoverTitle.TabIndex = 14;
+			label_modDependenciesItemMouseoverTitle.Text = "Mouse over an item to see information about it.";
+			// 
+			// checkedListBox_dummy
+			// 
+			checkedListBox_dummy.Enabled = false;
+			checkedListBox_dummy.FormattingEnabled = true;
+			checkedListBox_dummy.Location = new Point(21, 136);
+			checkedListBox_dummy.Name = "checkedListBox_dummy";
+			checkedListBox_dummy.Size = new Size(445, 166);
+			checkedListBox_dummy.TabIndex = 15;
+			checkedListBox_dummy.Visible = false;
+			// 
+			// label_stage3Title
+			// 
+			label_stage3Title.AutoSize = true;
+			label_stage3Title.Location = new Point(21, 12);
+			label_stage3Title.Name = "label_stage3Title";
+			label_stage3Title.Size = new Size(41, 15);
+			label_stage3Title.TabIndex = 16;
+			label_stage3Title.Text = "Detect";
+			// 
+			// label_stage3Desc
+			// 
+			label_stage3Desc.AutoSize = true;
+			label_stage3Desc.Location = new Point(24, 39);
+			label_stage3Desc.Name = "label_stage3Desc";
+			label_stage3Desc.Size = new Size(215, 15);
+			label_stage3Desc.TabIndex = 2;
+			label_stage3Desc.Text = "Status: Detecting existing installations...";
+			// 
+			// button_detectExistingMods
+			// 
+			button_detectExistingMods.Location = new Point(75, 85);
+			button_detectExistingMods.Name = "button_detectExistingMods";
+			button_detectExistingMods.Size = new Size(89, 23);
+			button_detectExistingMods.TabIndex = 1;
+			button_detectExistingMods.Text = "Detect Mods";
+			button_detectExistingMods.UseVisualStyleBackColor = true;
+			button_detectExistingMods.Click += button_detectExistingMods_Click;
+			// 
+			// button_prevStage
+			// 
+			button_prevStage.Anchor = AnchorStyles.Bottom;
+			button_prevStage.Location = new Point(577, 24);
+			button_prevStage.Name = "button_prevStage";
+			button_prevStage.Size = new Size(74, 28);
+			button_prevStage.TabIndex = 8;
+			button_prevStage.Text = "Back";
+			button_prevStage.UseVisualStyleBackColor = true;
+			button_prevStage.Click += button_prevStage_Click;
+			// 
+			// button_nextStage
+			// 
+			button_nextStage.Anchor = AnchorStyles.Bottom;
+			button_nextStage.Location = new Point(660, 24);
+			button_nextStage.Name = "button_nextStage";
+			button_nextStage.Size = new Size(76, 28);
+			button_nextStage.TabIndex = 9;
+			button_nextStage.Text = "Next";
+			button_nextStage.UseVisualStyleBackColor = true;
+			button_nextStage.Click += button_nextStage_Click;
+			// 
+			// panel_navigation
+			// 
+			panel_navigation.Controls.Add(button_prevStage);
+			panel_navigation.Controls.Add(button_nextStage);
+			panel_navigation.Controls.Add(button_quit);
+			panel_navigation.Location = new Point(33, 589);
+			panel_navigation.Name = "panel_navigation";
+			panel_navigation.Size = new Size(1122, 65);
+			panel_navigation.TabIndex = 10;
+			panel_navigation.Paint += panel4_Paint;
+			// 
+			// panel_stage4
+			// 
+			panel_stage4.Location = new Point(28, 378);
+			panel_stage4.Name = "panel_stage4";
+			panel_stage4.Size = new Size(195, 172);
+			panel_stage4.TabIndex = 15;
 			// 
 			// Form1
 			// 
 			AutoScaleDimensions = new SizeF(7F, 15F);
 			AutoScaleMode = AutoScaleMode.Font;
-			ClientSize = new Size(800, 450);
+			ClientSize = new Size(1193, 666);
+			Controls.Add(panel_stage4);
+			Controls.Add(panel_navigation);
+			Controls.Add(panel_stage3);
+			Controls.Add(panel_stage2);
+			Controls.Add(panel_stage1);
 			Icon = (Icon)resources.GetObject("$this.Icon");
 			Name = "Form1";
 			Text = "Form1";
+			Load += Form1_Load;
+			panel_stage1.ResumeLayout(false);
+			panel_stage1.PerformLayout();
+			panel_stage2.ResumeLayout(false);
+			panel_stage2.PerformLayout();
+			panel_stage3.ResumeLayout(false);
+			panel_stage3.PerformLayout();
+			panel_navigation.ResumeLayout(false);
 			ResumeLayout(false);
 		}
 
 		#endregion
+		private Panel panel_stage1;
+		private Button button_quit;
+		private Button button_start;
+		private FolderBrowserDialog folderBrowserDialog1;
+		private RichTextBox richTextBox1;
+		private Panel panel_stage2;
+		private Panel panel_stage3;
+		private LinkLabel linkLabelWiki;
+		private LinkLabel linkLabelHomepage;
+		private LinkLabel linkLabelDiscord;
+		private Button button_prevStage;
+		private Button button_nextStage;
+		private Panel panel_navigation;
+		private Label label_modDependenciesItemMouseverDescription;
+		private Label label_modDependenciesItemMouseoverTitle;
+		private Panel panel_stage4;
+		private CheckedListBox checkedListBox1;
+		private CheckedListBox checkedListBox_dummy;
+		private Button button_detectExistingMods;
+		private Button button_resetInstallPath;
+		private Button button_browseInstallPath;
+		private Label label_browseInstallPathDesc;
+		private Label label_stage1Title;
+		private Label label_stage2Title;
+		private Label label_stage3Title;
+		private Label label_stage3Desc;
 	}
 }

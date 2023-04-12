@@ -1,17 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Net.WebSockets;
-using System.Text;
+﻿using System.IO.Compression;
 using System.Text.Json;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 using System.Xml;
-using System.Xml.Linq;
 using Microsoft.VisualBasic.FileIO;
-using Microsoft.VisualBasic.Logging;
 using Microsoft.Win32;
 //using ZNix.SuperBLT;
 using VDF;
@@ -75,6 +65,8 @@ namespace Crackdown_Installer
 		{
 			httpClientInstance = client;
 
+			// Registry.GetValue("\\HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\Shell\\Associations\\URLAssociations\\https\\UserChoice", "SteamPath", "");
+
 			//tempDownloadsDirectory = Directory.CreateTempSubdirectory("crackdowninstaller_");
 			//Directory.Delete(tempDownloadsDirectory.FullName + "/", true);
 
@@ -100,13 +92,22 @@ namespace Crackdown_Installer
 				LogMessage("Unable to automatically find PD2 install directory.");
 			}
 
+
+
+
+		}
+
+		public List<ModDependencyEntry> CollectDependencies()
+		{
+			List<ModDependencyEntry> result = new();
+			ModDependencyList item;
 			if (DEBUG_LOCAL_JSON_HTTPREQ)
 			{
 #pragma warning disable CS0162 // Unreachable code detected
 				StreamReader sr = new("test.json");
 #pragma warning restore CS0162 // Unreachable code detected
 				string jsonResponse = sr.ReadToEnd();
-				ModDependencyList item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
+				item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
 				/*
 				foreach (ModDependencyEntry bla in item.Response)
 				{
@@ -117,9 +118,45 @@ namespace Crackdown_Installer
 			else
 			{
 				string jsonResponse = SendQueryDependencies();
+				LogMessage("Response Received in IM");
 				//ModDependencyList item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
-				ModDependencyList item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
+				item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
 			}
+
+			foreach (ModDependencyEntry entry in item.Response) {
+				result.Add(entry);
+			}
+			return result;
+		}
+
+		public List<ModDependencyEntry> CollectMissingMods() {
+			List<ModDependencyEntry> missingMods = new();
+			List<ModDependencyEntry> dependencyList = CollectDependencies();
+
+			foreach (ModDependencyEntry entry in dependencyList)
+			{
+				string? modName = entry.Name;
+				string? modType = entry.DirectoryType;
+				if (!string.IsNullOrEmpty(modName) && !string.IsNullOrEmpty(modType))
+				{
+					if (modType == "blt")
+					{
+						if (!HasBltModInstalled(modName))
+						{
+							missingMods.Add(entry);
+						}
+					}
+					else if (modType == "beardlib")
+					{
+						if (!HasBeardlibModInstalled(modName))
+						{
+							missingMods.Add(entry);
+						}
+					}
+				}
+			}
+
+			return missingMods;
 		}
 
 		/// <summary>
@@ -179,7 +216,8 @@ namespace Crackdown_Installer
 										if (c.Key == PD2_APPID)
 										{
 											//do not use Path.Combine here
-											return libraryPath + "\\steamapps\\common\\PAYDAY 2\\";
+											//also replace double-escaped backslashes
+											return (libraryPath + "\\steamapps\\common\\PAYDAY 2\\").Replace("\\\\", "\\");
 										}
 									}
 								}
@@ -453,8 +491,7 @@ namespace Crackdown_Installer
 		/// <returns></returns>
 		private async Task<string> AsyncJsonReq(string jsonUri)
 		{
-			var response = await httpClientInstance.GetStringAsync(jsonUri);
-			return response;
+			return await httpClientInstance.GetStringAsync(jsonUri);
 		}
 
 		/// <summary>
@@ -608,7 +645,7 @@ namespace Crackdown_Installer
 		/// 
 		/// </summary>
 		/// <param name="message"></param>
-		static void LogMessage(params object[] message)
+		public static void LogMessage(params object[] message)
 		{
 			string s = "";
 			string div = ", ";
