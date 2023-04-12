@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Linq;
 using Microsoft.VisualBasic.FileIO;
@@ -18,6 +20,9 @@ namespace Crackdown_Installer
 {
 	internal class InstallerManager
 	{
+		private const bool DOWNLOAD_CLOBBER_ENABLED = true;
+		//if true, allows file downloads to replace existing files by the same name.
+
 		private const bool DEBUG_LOCAL_JSON_HTTPREQ = false;
 		//if true, skips sending an http req for the json file,
 		//and reads a local json file instead.
@@ -55,11 +60,12 @@ namespace Crackdown_Installer
 
 		private string? steamInstallDirectory;
 		private string? pd2InstallDirectory;
+		private DirectoryInfo? tempDownloadsDirectory = null;
 
 		private List<Pd2ModData>? installedBltMods;
 		private List<Pd2ModData>? installedBeardlibMods;
 
-		private HttpClient clientInstance;
+		private HttpClient httpClientInstance;
 		/// <summary>
 		/// Creates a new InstallerManager instance,
 		/// which can perform a variety of installation related operations,
@@ -67,7 +73,10 @@ namespace Crackdown_Installer
 		/// </summary>
 		public InstallerManager(HttpClient client)
 		{
-			clientInstance = client;
+			httpClientInstance = client;
+
+			//tempDownloadsDirectory = Directory.CreateTempSubdirectory("crackdowninstaller_");
+			//Directory.Delete(tempDownloadsDirectory.FullName + "/", true);
 
 			pd2InstallDirectory = FindPd2InstallDirectory();
 			if (!string.IsNullOrEmpty(pd2InstallDirectory))
@@ -91,8 +100,32 @@ namespace Crackdown_Installer
 				LogMessage("Unable to automatically find PD2 install directory.");
 			}
 
+			if (DEBUG_LOCAL_JSON_HTTPREQ)
+			{
+#pragma warning disable CS0162 // Unreachable code detected
+				StreamReader sr = new("test.json");
+#pragma warning restore CS0162 // Unreachable code detected
+				string jsonResponse = sr.ReadToEnd();
+				ModDependencyList item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
+				/*
+				foreach (ModDependencyEntry bla in item.Response)
+				{
+					LogMessage("Dependency: " + bla.Name);
+				}
+				*/
+			}
+			else
+			{
+				string jsonResponse = SendQueryDependencies();
+				//ModDependencyList item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
+				ModDependencyList item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
+			}
 		}
 
+		/// <summary>
+		/// Returns the cached installation path for PAYDAY 2.
+		/// </summary>
+		/// <returns></returns>
 		public string GetPd2InstallDirectory() {
 			return pd2InstallDirectory ?? string.Empty;
 		}
@@ -146,7 +179,7 @@ namespace Crackdown_Installer
 										if (c.Key == PD2_APPID)
 										{
 											//do not use Path.Combine here
-											return libraryPath + "\\steamapps\\common\\PAYDAY 2\\"; 
+											return libraryPath + "\\steamapps\\common\\PAYDAY 2\\";
 										}
 									}
 								}
@@ -169,19 +202,44 @@ namespace Crackdown_Installer
 		/// </summary>
 		/// <param name="client"></param>
 		/// <returns></returns>
-		private JsonDocument SendQueryDependencies(HttpClient client)
+		private string SendQueryDependencies()
 		{
 			var jsonResponse = AsyncJsonReq(DEPENDENCIES_JSON_URI);
 
 			//make json document allow trailing commas
-			JsonDocumentOptions jsonOptions = new()
-			{
-				AllowTrailingCommas = true
+			//JsonDocumentOptions jsonOptions = new()
+			//{
+			//	AllowTrailingCommas = true
+			//};
+
+			//JsonDocument doc = JsonDocument.Parse(jsonResponse.Result, jsonOptions);
+
+			return jsonResponse.Result;
+		}
+
+		/// <summary>
+		/// Shortcut for JsonElement.TryGetProperty()
+		/// </summary>
+		/// <param name="propertyName"></param>
+		/// <param name="element"></param>
+		/// <returns></returns>
+		private string GetJsonAttribute(string propertyName,JsonElement element) {
+			JsonElement tempElementHolder = new JsonElement();
+			return GetJsonAttribute(propertyName, element, tempElementHolder);
+		}
+
+		/// <summary>
+		/// Shortcut for JsonElement.TryGetProperty() which can accept an existing JsonElement instead of creating one for each call
+		/// </summary>
+		/// <param name="propertyName"></param>
+		/// <param name="element"></param>
+		/// <param name="tempElementHolder"></param>
+		/// <returns></returns>
+		private string GetJsonAttribute(string propertyName,JsonElement element, JsonElement tempElementHolder) {
+			if (element.TryGetProperty(propertyName, out tempElementHolder)) {
+				return tempElementHolder.GetString() ?? string.Empty;
 			};
-
-			JsonDocument doc = JsonDocument.Parse(jsonResponse.Result, jsonOptions);
-
-			return doc;
+			return string.Empty;
 		}
 
 		/// <summary>
@@ -201,6 +259,9 @@ namespace Crackdown_Installer
 				AllowTrailingCommas = true
 			};
 
+			//create a throwaway temp element to hold the result of TryGetProperty()
+			JsonElement tempElement = new();
+
 			foreach (string subDirectory in FileSystem.GetDirectories(bltModsPath))
 			{
 				string definitionPath = Path.Combine(bltModsPath, subDirectory, JSON_MOD_DEFINITION_NAME);
@@ -208,19 +269,20 @@ namespace Crackdown_Installer
 				{
 					try
 					{
+						//don't serialize since we have to be much more careful when parsing unknown files;
+						//blt's json parser is very lax, especially when it comes to missing commas
 						var sr = new StreamReader(definitionPath);
 						var jsonStr = sr.ReadToEnd();
 						JsonDocument definitionFile = JsonDocument.Parse(jsonStr, jsonOptions);
 						JsonElement rootElement = definitionFile.RootElement;
-						JsonElement modNameElement = rootElement.GetProperty("name");
-						JsonElement modDescElement = rootElement.GetProperty("description");
-						JsonElement modVersionElement = rootElement.GetProperty("version");
-						string modName = modNameElement.GetString() ?? string.Empty;
-						string modVersion = modVersionElement.GetString() ?? string.Empty;
-						string modDescription = modDescElement.GetString() ?? string.Empty;
+
+						string modName = GetJsonAttribute("name",rootElement, tempElement);
+						string modDesc = GetJsonAttribute("description",rootElement, tempElement);
+						string modVersion = GetJsonAttribute("version",rootElement, tempElement);
+						string modDescription = GetJsonAttribute("description",rootElement, tempElement);
 						string modType = "json";
 						installedMods.Add(new Pd2ModData(modName, modDescription, modVersion, modType));
-//						LogMessage("Found json mod " + modName);
+						//						LogMessage("Found json mod " + modName);
 					}
 					catch (JsonException e)
 					{
@@ -273,7 +335,6 @@ namespace Crackdown_Installer
 		private List<Pd2ModData> CollectBeardlibMods(string[] modsFolderPaths)
 		{
 			List<Pd2ModData> installedMods = new();
-
 			foreach (string modsFolderPath in modsFolderPaths)
 			{
 				foreach (string modFolder in FileSystem.GetDirectories(modsFolderPath))
@@ -314,6 +375,76 @@ namespace Crackdown_Installer
 			return installedMods;
 		}
 
+		/// <summary>
+		/// 
+		/// Downloads the given file to the temp directory, 
+		/// unzips it there,
+		/// and moves the unzipped contents to the specified destination directory.
+		/// Removes the downloaded zip afterward.
+		/// </summary>
+		/// <param name="downloadDir"></param>
+		/// <param name="siteUri"></param>
+		/// <param name="installFilePath"></param>
+		/// <returns></returns>
+		public bool DownloadPackage(string downloadDir, string siteUri, string installFilePath)
+		{
+			string downloadFileName = "tmp.zip";
+			string downloadFilePath = downloadDir + downloadFileName;
+
+			if (DEBUG_NO_FILE_DOWNLOAD)
+			{
+				LogMessage("DEBUG: Pretended to download and write " + siteUri + " to " + downloadFilePath + " and move to final location " + installFilePath + "but didn't actually. :)");
+
+
+				return true;
+			}
+
+#pragma warning disable CS0162 // Unreachable code detected
+			//debug option
+			try
+			{
+
+
+				LogMessage("Downloading: " + siteUri + " to " + downloadDir + "...");
+
+				using (var s = httpClientInstance.GetStreamAsync(siteUri))
+				{
+					using (var fs = new FileStream(downloadFilePath, FileMode.OpenOrCreate))
+					{
+						s.Result.CopyTo(fs);
+					}
+				}
+
+				LogMessage("Unzipping " + downloadFilePath + " to " + downloadDir + "...");
+
+				ZipFile.ExtractToDirectory(downloadFilePath, downloadDir);
+
+				foreach (string modFolder in Directory.EnumerateDirectories(downloadDir, "*", System.IO.SearchOption.TopDirectoryOnly))
+				{
+
+					LogMessage("Moving " + modFolder + " to " + installFilePath + "...");
+					if (!DEBUG_NO_FILE_INSTALL)
+					{
+						FileSystem.MoveDirectory(modFolder, installFilePath, DOWNLOAD_CLOBBER_ENABLED);
+					}
+					if (!DEBUG_NO_FILE_CLEANUP)
+					{
+						LogMessage("Deleting " + downloadFilePath + "...");
+						System.IO.File.Delete(downloadFilePath);
+					}
+				}
+
+				return true;
+			}
+			catch (Exception e)
+			{
+				LogMessage("Installation aborted due to an error: ");
+				LogMessage(e);
+				return false;
+			}
+#pragma warning restore CS0162 // Unreachable code detected
+			return false;
+		}
 
 		/// <summary>
 		/// Sends an async httpreq to the given uri and returns the response.
@@ -322,7 +453,7 @@ namespace Crackdown_Installer
 		/// <returns></returns>
 		private async Task<string> AsyncJsonReq(string jsonUri)
 		{
-			var response = await clientInstance.GetStringAsync(jsonUri);
+			var response = await httpClientInstance.GetStringAsync(jsonUri);
 			return response;
 		}
 
@@ -368,7 +499,6 @@ namespace Crackdown_Installer
 		public bool HasBltModInstalled(string modName)
 		{
 			if (installedBltMods == null) { return false; }
-
 			foreach (Pd2ModData modData in installedBltMods)
 			{
 				if (modData.GetName() == modName)
@@ -407,29 +537,29 @@ namespace Crackdown_Installer
 		{
 			private string Name { get; set; }
 			private string Description { get; set; }
-			private string Version { get; set; }
+			private string ModVersion { get; set; }
 			private string ModType { get; set; }
 
 			public Pd2ModData(string? name, string? description, string? version, string? modType)
 			{
 				Name = name ?? string.Empty;
 				Description = description ?? string.Empty;
-				Version = version ?? string.Empty;
+				ModVersion = version ?? string.Empty;
 				ModType = modType ?? string.Empty;
 			}
-
+			
 			/// <summary>
 			/// Get the name of this mod, as written in its definition file.
 			/// </summary>
 			/// <returns></returns>
 			public string GetName()
 			{
-			   return Name;
+				return Name;
 			}
 
 			public string GetVersion()
 			{
-			   return Version;
+				return ModVersion;
 			}
 
 			public string GetDescription()
@@ -439,10 +569,40 @@ namespace Crackdown_Installer
 
 			public string GetModType()
 			{
-			   return ModType;
+				return ModType;
 			}
 
 		}
+		
+		public class ModDependencyList
+		{
+			public IList<ModDependencyEntry>? Response { get; set; }
+			public Dictionary<string, string>? MetaResponse { get; set; }
+			public ModDependencyList(IList<ModDependencyEntry> response,Dictionary<string,string> metaResponse) {
+				Response = response ?? new List<ModDependencyEntry>();
+				MetaResponse = metaResponse ?? new Dictionary<string, string>();
+			}
+
+		}
+
+		public class ModDependencyEntry
+		{
+			public string? Name { get; set; }
+			public string? Description { get; set; }
+			public string? DirectoryType { get; set; }
+			public string? DirectoryName { get; set; }
+			public string? Provider { get; set; }
+			public string? Uri { get; set; }
+			public string? Branch { get; set; }
+			public bool? Release { get; set; }
+			public bool? Optional { get; set; }
+
+			//public string ModVersion { get; set; }
+			//public string Hash { get; set }
+			//maybe we'll use these for manual version checking for direct downloads later
+		}
+
+
 
 		/// <summary>
 		/// 
