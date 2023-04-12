@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Linq;
 using Microsoft.VisualBasic.FileIO;
 using Microsoft.VisualBasic.Logging;
@@ -67,19 +69,42 @@ namespace Crackdown_Installer
 		{
 			clientInstance = client;
 
-			if (!FindPd2InstallDirectory()) {
+			pd2InstallDirectory = FindPd2InstallDirectory();
+			if (!string.IsNullOrEmpty(pd2InstallDirectory))
+			{
+
+				//generate installed mods list
+				string modsDirectory = Path.Combine(pd2InstallDirectory, "mods"); //mods folder
+				string modOverridesDirectory = Path.Combine(pd2InstallDirectory, "assets\\mod_overrides\\"); //mod_overrides folder
+
+				string[] modFoldersList =
+				{
+					modsDirectory,
+					modOverridesDirectory
+				};
+				installedBltMods = CollectBltMods(modsDirectory);
+				installedBeardlibMods = CollectBeardlibMods(modFoldersList);
+
+			}
+			else
+			{
 				LogMessage("Unable to automatically find PD2 install directory.");
 			}
 
-
-			//generate installed mods list
-
-			//this.GenerateInstalledBltModsList();
-
 		}
 
+		public string GetPd2InstallDirectory() {
+			return pd2InstallDirectory ?? string.Empty;
+		}
 
-		private bool FindPd2InstallDirectory() {
+		/// <summary>
+		/// Attempts to find the path to the PAYDAY 2 installation,
+		/// using the Steam install location in the registry
+		/// and the Steam library folder manifest vdf file in the Steam install folder.
+		/// Returns true if successful.
+		/// </summary>
+		/// <returns></returns>
+		private string? FindPd2InstallDirectory() {
 
 			//search for steam install directory as stored in registry
 			object? registryValue = Registry.GetValue(KEY_USER_ROOT + "\\" + KEY_VALVE_STEAM, "SteamPath", "");
@@ -111,18 +136,19 @@ namespace Crackdown_Installer
 								Dictionary<string, NestedElement> items = b.Children;
 
 								NestedElement libraryPathElement = items["path"];
-
-								NestedElement libraryAppsElement = items["apps"];
-
-								//foreach item in items["apps"];
-								foreach (KeyValuePair<string, NestedElement> c in libraryAppsElement.Children)
+								string libraryPath = libraryPathElement.Value;
+								if (!string.IsNullOrEmpty(libraryPath))
 								{
-									if (c.Key == PD2_APPID)
+									NestedElement libraryAppsElement = items["apps"];
+									//foreach item in items["apps"];
+									foreach (KeyValuePair<string, NestedElement> c in libraryAppsElement.Children)
 									{
-										pd2InstallDirectory = libraryPathElement.Value;
-										return !(string.IsNullOrEmpty(pd2InstallDirectory));
+										if (c.Key == PD2_APPID)
+										{
+											//do not use Path.Combine here
+											return libraryPath + "\\steamapps\\common\\PAYDAY 2\\"; 
+										}
 									}
-
 								}
 							}
 						}
@@ -134,7 +160,7 @@ namespace Crackdown_Installer
 					}
 				}
 			}
-			return false;
+			return null;
 		}
 
 		/// <summary>
@@ -148,7 +174,7 @@ namespace Crackdown_Installer
 			var jsonResponse = AsyncJsonReq(DEPENDENCIES_JSON_URI);
 
 			//make json document allow trailing commas
-			JsonDocumentOptions jsonOptions = new JsonDocumentOptions
+			JsonDocumentOptions jsonOptions = new()
 			{
 				AllowTrailingCommas = true
 			};
@@ -165,9 +191,9 @@ namespace Crackdown_Installer
 		/// </summary>
 		/// <param name="bltModsPath"></param>
 		/// <returns></returns>
-		private List<Pd2ModData> GenerateInstalledBltModsList(string bltModsPath)
+		private List<Pd2ModData> CollectBltMods(string bltModsPath)
 		{
-			List<Pd2ModData> installedBltMods = new List<Pd2ModData>();
+			List<Pd2ModData> installedMods = new List<Pd2ModData>();
 
 			//default json document options
 			JsonDocumentOptions jsonOptions = new JsonDocumentOptions
@@ -182,15 +208,19 @@ namespace Crackdown_Installer
 				{
 					try
 					{
-						JsonDocument definitionFile = JsonDocument.Parse(definitionPath, jsonOptions);
+						var sr = new StreamReader(definitionPath);
+						var jsonStr = sr.ReadToEnd();
+						JsonDocument definitionFile = JsonDocument.Parse(jsonStr, jsonOptions);
 						JsonElement rootElement = definitionFile.RootElement;
 						JsonElement modNameElement = rootElement.GetProperty("name");
+						JsonElement modDescElement = rootElement.GetProperty("description");
 						JsonElement modVersionElement = rootElement.GetProperty("version");
 						string modName = modNameElement.GetString() ?? string.Empty;
 						string modVersion = modVersionElement.GetString() ?? string.Empty;
-						string modType = "blt";
-						Pd2ModData modData = new Pd2ModData(modName, "", modVersion, modType);
-						installedBltMods.Add(modData);
+						string modDescription = modDescElement.GetString() ?? string.Empty;
+						string modType = "json";
+						installedMods.Add(new Pd2ModData(modName, modDescription, modVersion, modType));
+//						LogMessage("Found json mod " + modName);
 					}
 					catch (JsonException e)
 					{
@@ -202,8 +232,88 @@ namespace Crackdown_Installer
 					}
 				}
 			}
-			return installedBltMods;
+			return installedMods;
 		}
+
+		/// <summary>
+		/// Gets the attribute value (inner xml) of the given property name from the given collection.
+		/// </summary>
+		/// <param name="collection"></param>
+		/// <param name="elementName"></param>
+		/// <returns></returns>
+		static string GetXmlAttribute(XmlAttributeCollection collection, string elementName)
+		{
+			string result = "";
+			XmlAttribute? elementAttribute = collection[elementName];
+			if (elementAttribute != null)
+			{
+				result = elementAttribute.InnerXml;
+			}
+			return result;
+		}
+
+		/// <summary>
+		/// Gets the attribute value (inner xml) of the given property name from the given collection.
+		/// Returns the fallback value, if provided.
+		/// </summary>
+		/// <param name="collection"></param>
+		/// <param name="elementName"></param>
+		/// <param name="fallback"></param>
+		/// <returns></returns>
+		static string GetXmlAttribute(XmlAttributeCollection collection, string elementName, string? fallback)
+		{
+			return GetXmlAttribute(collection, elementName) ?? fallback ?? string.Empty;
+		}
+
+		/// <summary>
+		/// Finds all valid BeardLib mods, as detected by the presence of a valid XML file called main.xml.
+		/// </summary>
+		/// <param name="modsFolderPaths"></param>
+		/// <returns></returns>
+		private List<Pd2ModData> CollectBeardlibMods(string[] modsFolderPaths)
+		{
+			List<Pd2ModData> installedMods = new();
+
+			foreach (string modsFolderPath in modsFolderPaths)
+			{
+				foreach (string modFolder in FileSystem.GetDirectories(modsFolderPath))
+				{
+					string definitionPath = Path.Combine(modFolder, XML_MOD_DEFINITION_NAME);
+
+					if (FileSystem.FileExists(definitionPath))
+					{
+						try
+						{
+							XmlDocument xmlDoc = new();
+							xmlDoc.Load(definitionPath);
+							//Display the contents of the child nodes.
+							XmlElement? element = xmlDoc.DocumentElement;
+							if (element != null)
+							{
+								XmlAttributeCollection? attrcoll = element.Attributes;
+								if (attrcoll != null)
+								{
+									string modName = GetXmlAttribute(attrcoll, "name");
+									string modVersion = GetXmlAttribute(attrcoll, "version");
+									string modDescription = "";
+									//description is not specified in BeardLib ModCore documentation
+									string modType = "xml";
+									//LogMessage("Found xml mod " + modName);
+									installedMods.Add(new Pd2ModData(modName, modVersion, modDescription, modType));
+								}
+							}
+						}
+						catch (IOException e)
+						{
+							Console.WriteLine("The file could not be read:");
+							Console.WriteLine(e.Message);
+						}
+					}
+				}
+			}
+			return installedMods;
+		}
+
 
 		/// <summary>
 		/// Sends an async httpreq to the given uri and returns the response.
@@ -221,7 +331,7 @@ namespace Crackdown_Installer
 		/// Returns a list of any PD2 mod objects that were not found installed.
 		/// </summary>
 		/// <param name="dependenciesData"></param>
-		private List<Pd2ModData> CheckMods(List<Pd2ModData> dependenciesData)
+		public List<Pd2ModData> CheckMods(List<Pd2ModData> dependenciesData)
 		{
 			List<Pd2ModData> missingMods = new List<Pd2ModData>();
 			if (dependenciesData != null)
@@ -289,7 +399,11 @@ namespace Crackdown_Installer
 			return false;
 		}
 
-		private class Pd2ModData
+		/// <summary>
+		/// Holds basic information about a mod, so that this data can be compared or checked later,
+		/// eg. when searching a list of mods that are installed or not installed.
+		/// </summary>
+		public class Pd2ModData
 		{
 			private string Name { get; set; }
 			private string Description { get; set; }
@@ -330,29 +444,30 @@ namespace Crackdown_Installer
 
 		}
 
-		static void LogMessage(object? message)
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="message"></param>
+		static void LogMessage(params object[] message)
 		{
-			string? s;
-			if (message != null)
-			{
-				s = message.ToString();
-				if (s != null)
+			string s = "";
+			string div = ", ";
+			int i = 0; //num args
+			foreach (object o in message) {
+				i++;
+				if (i > 1)
 				{
-					/*
-					string s = String.Empty;
-					foreach (Object o in message) {
-						s = s + o.ToString();
-					}
-					*/
+					s = s + div;
+				}
+
+				if (o != null)
+				{
+					s = s + o.ToString();
 				}
 				else
 				{
-					s = "null";
+					s = s + "[null]";
 				}
-			}
-			else
-			{
-				s = "null";
 			}
 			string timeStamp = DateTime.Now.ToString();
 			s = "[" + timeStamp + "] " + s;
