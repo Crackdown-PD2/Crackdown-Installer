@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ using Microsoft.VisualBasic.FileIO;
 using Microsoft.VisualBasic.Logging;
 using Microsoft.Win32;
 //using ZNix.SuperBLT;
+using VDF;
 
 namespace Crackdown_Installer
 {
@@ -64,6 +66,21 @@ namespace Crackdown_Installer
 		public InstallerManager(HttpClient client)
 		{
 			clientInstance = client;
+
+			if (!FindPd2InstallDirectory()) {
+				LogMessage("Unable to automatically find PD2 install directory.");
+			}
+
+
+			//generate installed mods list
+
+			//this.GenerateInstalledBltModsList();
+
+		}
+
+
+		private bool FindPd2InstallDirectory() {
+
 			//search for steam install directory as stored in registry
 			object? registryValue = Registry.GetValue(KEY_USER_ROOT + "\\" + KEY_VALVE_STEAM, "SteamPath", "");
 			if (registryValue != null)
@@ -74,43 +91,50 @@ namespace Crackdown_Installer
 				{
 					//find the library folder that contains PAYDAY 2's appid
 					string libraryManifestPath = STEAM_LIBRARY_MANIFEST_PATH.Replace("%%STEAM%%", steamInstallDirectory);
-					if (File.Exists(libraryManifestPath)) {
+					if (File.Exists(libraryManifestPath))
+					{
 						//read steam library data,
 						//then search for pd2 install directory in vdf
 
-						/* pseudo
-						try {
-							Vdf libraryFile = ReadVDF(libraryManifestPath);
-							foreach (Element libraryData in libraryFile)
+						try
+						{
+
+							VDFFile libraryFile = new VDFFile(libraryManifestPath);
+							var root = libraryFile.Elements;
+							var libraryFoldersElement = root["libraryfolders"];
+
+							var children = libraryFoldersElement.Children;
+							//for each library folder entry listed:
+							foreach (KeyValuePair<string, NestedElement> a in children)
 							{
-								Element Apps = libraryData.GetProperty("apps");
-								if (Apps.HasElement(PD2_APPID)) {
-									string libraryPath = libraryData.GetProperty("path");
-									if (!String.IsNullOrEmpty(libraryPath)) {
-										pd2InstallDirectory = libraryPath;
-										break;
+								NestedElement b = a.Value;
+								Dictionary<string, NestedElement> items = b.Children;
+
+								NestedElement libraryPathElement = items["path"];
+
+								NestedElement libraryAppsElement = items["apps"];
+
+								//foreach item in items["apps"];
+								foreach (KeyValuePair<string, NestedElement> c in libraryAppsElement.Children)
+								{
+									if (c.Key == PD2_APPID)
+									{
+										pd2InstallDirectory = libraryPathElement.Value;
+										return !(string.IsNullOrEmpty(pd2InstallDirectory));
 									}
+
 								}
 							}
 						}
-						catch(Exception e) {
-							LogMessage("Could not read or find Steam library manifest at " +  libraryManifestPath + ":");
+						catch (Exception e)
+						{
+							LogMessage(e.GetType() + ": Could not read or find Steam library manifest at " + libraryManifestPath + ":");
 							LogMessage(e.Message);
 						}
-						*/
-
-
 					}
-
-
 				}
 			}
-			
-
-			//generate installed mods list
-
-			//this.GenerateInstalledBltModsList();
-
+			return false;
 		}
 
 		/// <summary>
