@@ -85,7 +85,8 @@ namespace Crackdown_Installer
 				if (index == checkboxIndex)
 				{
 					pos = this.PointToClient(MousePosition);
-					if (!descLabel.Visible) {
+					if (!descLabel.Visible)
+					{
 						descLabel.Show();
 					}
 					descLabel.Text = descriptionText;
@@ -199,7 +200,7 @@ namespace Crackdown_Installer
 					{
 						int itemIndex = checkedListBox_installedDependencyItems.Items.Add(modName, true);
 						//System.Diagnostics.Debug.WriteLine("Adding installed tooltip: " + modDesc + " " + itemIndex);
-						
+
 						//todo check version and add as optional download if existent but outdated
 						if (itemIndex > -1)
 						{

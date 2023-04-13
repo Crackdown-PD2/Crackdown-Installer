@@ -45,6 +45,8 @@
 			button_browseInstallPath = new Button();
 			button_resetInstallPath = new Button();
 			panel_stage3 = new Panel();
+			label_installedModsList = new Label();
+			label_missingModsList = new Label();
 			checkedListBox_dummyInstalledMods = new CheckedListBox();
 			label_modDependenciesItemMouseverDescription = new Label();
 			checkedListBox_dummyMissingMods = new CheckedListBox();
@@ -56,8 +58,6 @@
 			panel_navigation = new Panel();
 			panel_stage4 = new Panel();
 			toolTip1 = new ToolTip(components);
-			label_missingModsList = new Label();
-			label_installedModsList = new Label();
 			panel_stage1.SuspendLayout();
 			panel_stage2.SuspendLayout();
 			panel_stage3.SuspendLayout();
@@ -231,6 +231,24 @@
 			panel_stage3.TabIndex = 7;
 			panel_stage3.Visible = false;
 			// 
+			// label_installedModsList
+			// 
+			label_installedModsList.AutoSize = true;
+			label_installedModsList.Location = new Point(444, 97);
+			label_installedModsList.Name = "label_installedModsList";
+			label_installedModsList.Size = new Size(81, 15);
+			label_installedModsList.TabIndex = 19;
+			label_installedModsList.Text = "Existing Mods";
+			// 
+			// label_missingModsList
+			// 
+			label_missingModsList.AutoSize = true;
+			label_missingModsList.Location = new Point(75, 97);
+			label_missingModsList.Name = "label_missingModsList";
+			label_missingModsList.Size = new Size(113, 15);
+			label_missingModsList.TabIndex = 18;
+			label_missingModsList.Text = "Pending Downloads";
+			// 
 			// checkedListBox_dummyInstalledMods
 			// 
 			checkedListBox_dummyInstalledMods.CheckOnClick = true;
@@ -333,24 +351,6 @@
 			panel_stage4.Size = new Size(195, 172);
 			panel_stage4.TabIndex = 15;
 			// 
-			// label_missingModsList
-			// 
-			label_missingModsList.AutoSize = true;
-			label_missingModsList.Location = new Point(75, 97);
-			label_missingModsList.Name = "label_missingModsList";
-			label_missingModsList.Size = new Size(113, 15);
-			label_missingModsList.TabIndex = 18;
-			label_missingModsList.Text = "Pending Downloads";
-			// 
-			// label_installedModsList
-			// 
-			label_installedModsList.AutoSize = true;
-			label_installedModsList.Location = new Point(444, 97);
-			label_installedModsList.Name = "label_installedModsList";
-			label_installedModsList.Size = new Size(81, 15);
-			label_installedModsList.TabIndex = 19;
-			label_installedModsList.Text = "Existing Mods";
-			// 
 			// Form1
 			// 
 			AutoScaleDimensions = new SizeF(7F, 15F);
@@ -363,7 +363,7 @@
 			Controls.Add(panel_stage1);
 			Icon = (Icon)resources.GetObject("$this.Icon");
 			Name = "Form1";
-			Text = "Form1";
+			Text = "Installer Wizard";
 			Load += Form1_Load;
 			panel_stage1.ResumeLayout(false);
 			panel_stage1.PerformLayout();
