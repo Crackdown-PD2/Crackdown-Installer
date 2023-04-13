@@ -28,15 +28,17 @@ namespace Crackdown_Installer
 		//so that you can manually verify them if you wish.
 
 		private const string CURRENT_INSTALLER_VERSION = "0";
-		private const string DEPENDENCIES_JSON_URI = "https://raw.githubusercontent.com/Crackdown-PD2/deathvox/autoupdate/cd_dependencies.json";
-		private const string SUPERBLT_DLL_WSOCK32_URI = "https://sblt-update.znix.xyz/pd2update/updates/meta.php?id=payday2bltwsockdll"; //holds meta json info about dll updates
+		private const string DEPENDENCIES_JSON_URL = "https://raw.githubusercontent.com/Crackdown-PD2/deathvox/autoupdate/cd_dependencies.json";
+		private const string SUPERBLT_DLL_WSOCK32_URL = "https://sblt-update.znix.xyz/pd2update/updates/meta.php?id=payday2bltwsockdll"; //holds meta json info about dll updates
 		private const string DLL_DIFFERENCE_INFO_URL = "https://superblt.znix.xyz/#regarding-the-iphlpapidll-vs-wsock32dll-situation"; //a page for humans to read with their eyeballs, about differences between iphlpapi and wsock32 dlls
 
 		private const string PROVIDER_GITHUB_COMMIT_URL = "https://api.github.com/repos/$id$/commits/$branch$";
 		private const string PROVIDER_GITHUB_RELEASE_URL = "https://api.github.com/repos/$id$/releases/latest";
 		private const string PROVIDER_GITHUB_DIRECT_URL = "https://github.com/$id$/archive/$branch$.zip";
-		//private const string PROVIDER_GITLAB_RELEASE_URL = "https://gitlab.com/$id$/-/releases";
-		//private const string PROVIDER_GITLAB_DIRECT_URL = "https://gitlab.com/$id$/-/archive/$id$-$branch$.zip";
+
+		//private const string PROVIDER_GITLAB_COMMIT_URL = "https://gitlab.com/api/v4/projects/$id$/repository/branches/$branch$";
+		private const string PROVIDER_GITLAB_RELEASE_URL = "https://gitlab.com/api/v4/projects/$id$/releases";
+		private const string PROVIDER_GITLAB_DIRECT_URL = "https://gitlab.com/api/v4/projects/$id$/repository/archive.zip";
 
 		private const string JSON_MOD_DEFINITION_NAME = "mod.txt";
 		private const string XML_MOD_DEFINITION_NAME = "main.xml";
@@ -113,7 +115,7 @@ namespace Crackdown_Installer
 			{
 				/// Send a query to the Crackdown updates repo
 				/// to get a list of packages that Crackdown uses
-				string jsonResponse = await AsyncJsonReq(DEPENDENCIES_JSON_URI);
+				string jsonResponse = await AsyncJsonReq(DEPENDENCIES_JSON_URL);
 				
 				//ModDependencyList item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
 				item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
