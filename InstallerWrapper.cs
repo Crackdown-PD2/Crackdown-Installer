@@ -18,7 +18,7 @@ namespace Crackdown_Installer
 
 			//instantiate new client to handle all outgoing http reqs
 			HttpClient client = new HttpClient();
-			client.Timeout = TimeSpan.FromSeconds(15);
+			client.Timeout = TimeSpan.FromMinutes(1);
 
 			instMgr = new(client);
 

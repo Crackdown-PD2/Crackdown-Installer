@@ -28,6 +28,7 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
+			components = new System.ComponentModel.Container();
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
 			panel_stage1 = new Panel();
 			label_stage1Title = new Label();
@@ -44,9 +45,9 @@
 			button_browseInstallPath = new Button();
 			button_resetInstallPath = new Button();
 			panel_stage3 = new Panel();
+			checkedListBox_dummyInstalledMods = new CheckedListBox();
 			label_modDependenciesItemMouseverDescription = new Label();
-			label_modDependenciesItemMouseoverTitle = new Label();
-			checkedListBox_dummy = new CheckedListBox();
+			checkedListBox_dummyMissingMods = new CheckedListBox();
 			label_stage3Title = new Label();
 			label_stage3Desc = new Label();
 			button_detectExistingMods = new Button();
@@ -54,6 +55,9 @@
 			button_nextStage = new Button();
 			panel_navigation = new Panel();
 			panel_stage4 = new Panel();
+			toolTip1 = new ToolTip(components);
+			label_missingModsList = new Label();
+			label_installedModsList = new Label();
 			panel_stage1.SuspendLayout();
 			panel_stage2.SuspendLayout();
 			panel_stage3.SuspendLayout();
@@ -177,11 +181,11 @@
 			// label_stage2Title
 			// 
 			label_stage2Title.AutoSize = true;
-			label_stage2Title.Location = new Point(18, 12);
+			label_stage2Title.Location = new Point(16, 27);
 			label_stage2Title.Name = "label_stage2Title";
-			label_stage2Title.Size = new Size(145, 15);
+			label_stage2Title.Size = new Size(172, 15);
 			label_stage2Title.TabIndex = 10;
-			label_stage2Title.Text = "Find your PAYDAY 2 folder";
+			label_stage2Title.Text = "Auto-detected PAYDAY 2 folder";
 			// 
 			// label_browseInstallPathDesc
 			// 
@@ -213,9 +217,11 @@
 			// 
 			// panel_stage3
 			// 
+			panel_stage3.Controls.Add(label_installedModsList);
+			panel_stage3.Controls.Add(label_missingModsList);
+			panel_stage3.Controls.Add(checkedListBox_dummyInstalledMods);
 			panel_stage3.Controls.Add(label_modDependenciesItemMouseverDescription);
-			panel_stage3.Controls.Add(label_modDependenciesItemMouseoverTitle);
-			panel_stage3.Controls.Add(checkedListBox_dummy);
+			panel_stage3.Controls.Add(checkedListBox_dummyMissingMods);
 			panel_stage3.Controls.Add(label_stage3Title);
 			panel_stage3.Controls.Add(label_stage3Desc);
 			panel_stage3.Controls.Add(button_detectExistingMods);
@@ -225,60 +231,66 @@
 			panel_stage3.TabIndex = 7;
 			panel_stage3.Visible = false;
 			// 
+			// checkedListBox_dummyInstalledMods
+			// 
+			checkedListBox_dummyInstalledMods.CheckOnClick = true;
+			checkedListBox_dummyInstalledMods.Enabled = false;
+			checkedListBox_dummyInstalledMods.FormattingEnabled = true;
+			checkedListBox_dummyInstalledMods.Location = new Point(366, 126);
+			checkedListBox_dummyInstalledMods.Name = "checkedListBox_dummyInstalledMods";
+			checkedListBox_dummyInstalledMods.Size = new Size(266, 166);
+			checkedListBox_dummyInstalledMods.TabIndex = 17;
+			checkedListBox_dummyInstalledMods.Visible = false;
+			// 
 			// label_modDependenciesItemMouseverDescription
 			// 
 			label_modDependenciesItemMouseverDescription.AutoSize = true;
-			label_modDependenciesItemMouseverDescription.Location = new Point(387, 93);
+			label_modDependenciesItemMouseverDescription.Location = new Point(195, 305);
 			label_modDependenciesItemMouseverDescription.Name = "label_modDependenciesItemMouseverDescription";
-			label_modDependenciesItemMouseverDescription.Size = new Size(290, 15);
+			label_modDependenciesItemMouseverDescription.Size = new Size(258, 15);
 			label_modDependenciesItemMouseverDescription.TabIndex = 13;
-			label_modDependenciesItemMouseverDescription.Text = "Mouse over an item to see more information about it.";
+			label_modDependenciesItemMouseverDescription.Text = "Mouse over a dependency to see more about it.";
 			// 
-			// label_modDependenciesItemMouseoverTitle
+			// checkedListBox_dummyMissingMods
 			// 
-			label_modDependenciesItemMouseoverTitle.AutoSize = true;
-			label_modDependenciesItemMouseoverTitle.Location = new Point(405, 50);
-			label_modDependenciesItemMouseoverTitle.Name = "label_modDependenciesItemMouseoverTitle";
-			label_modDependenciesItemMouseoverTitle.Size = new Size(259, 15);
-			label_modDependenciesItemMouseoverTitle.TabIndex = 14;
-			label_modDependenciesItemMouseoverTitle.Text = "Mouse over an item to see information about it.";
-			// 
-			// checkedListBox_dummy
-			// 
-			checkedListBox_dummy.Enabled = false;
-			checkedListBox_dummy.FormattingEnabled = true;
-			checkedListBox_dummy.Location = new Point(21, 136);
-			checkedListBox_dummy.Name = "checkedListBox_dummy";
-			checkedListBox_dummy.Size = new Size(445, 166);
-			checkedListBox_dummy.TabIndex = 15;
-			checkedListBox_dummy.Visible = false;
+			checkedListBox_dummyMissingMods.CheckOnClick = true;
+			checkedListBox_dummyMissingMods.Enabled = false;
+			checkedListBox_dummyMissingMods.FormattingEnabled = true;
+			checkedListBox_dummyMissingMods.Location = new Point(24, 126);
+			checkedListBox_dummyMissingMods.Name = "checkedListBox_dummyMissingMods";
+			checkedListBox_dummyMissingMods.Size = new Size(250, 166);
+			checkedListBox_dummyMissingMods.TabIndex = 15;
+			checkedListBox_dummyMissingMods.Visible = false;
 			// 
 			// label_stage3Title
 			// 
 			label_stage3Title.AutoSize = true;
-			label_stage3Title.Location = new Point(21, 12);
+			label_stage3Title.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
+			label_stage3Title.Location = new Point(24, 12);
 			label_stage3Title.Name = "label_stage3Title";
-			label_stage3Title.Size = new Size(41, 15);
+			label_stage3Title.Size = new Size(131, 15);
 			label_stage3Title.TabIndex = 16;
-			label_stage3Title.Text = "Detect";
+			label_stage3Title.Text = "Dependency Packages";
+			label_stage3Title.Click += label_stage3Title_Click;
 			// 
 			// label_stage3Desc
 			// 
 			label_stage3Desc.AutoSize = true;
-			label_stage3Desc.Location = new Point(24, 39);
+			label_stage3Desc.Location = new Point(16, 27);
 			label_stage3Desc.Name = "label_stage3Desc";
-			label_stage3Desc.Size = new Size(215, 15);
+			label_stage3Desc.Size = new Size(570, 15);
 			label_stage3Desc.TabIndex = 2;
-			label_stage3Desc.Text = "Status: Detecting existing installations...";
+			label_stage3Desc.Text = "These are mods that Crackdown needs in order to work properly. Select which files to download and install.";
 			// 
 			// button_detectExistingMods
 			// 
-			button_detectExistingMods.Location = new Point(75, 85);
+			button_detectExistingMods.Location = new Point(272, 45);
 			button_detectExistingMods.Name = "button_detectExistingMods";
-			button_detectExistingMods.Size = new Size(89, 23);
+			button_detectExistingMods.Size = new Size(103, 25);
 			button_detectExistingMods.TabIndex = 1;
-			button_detectExistingMods.Text = "Detect Mods";
+			button_detectExistingMods.Text = "Re-detect Mods";
 			button_detectExistingMods.UseVisualStyleBackColor = true;
+			button_detectExistingMods.Visible = false;
 			button_detectExistingMods.Click += button_detectExistingMods_Click;
 			// 
 			// button_prevStage
@@ -321,6 +333,24 @@
 			panel_stage4.Size = new Size(195, 172);
 			panel_stage4.TabIndex = 15;
 			// 
+			// label_missingModsList
+			// 
+			label_missingModsList.AutoSize = true;
+			label_missingModsList.Location = new Point(75, 97);
+			label_missingModsList.Name = "label_missingModsList";
+			label_missingModsList.Size = new Size(113, 15);
+			label_missingModsList.TabIndex = 18;
+			label_missingModsList.Text = "Pending Downloads";
+			// 
+			// label_installedModsList
+			// 
+			label_installedModsList.AutoSize = true;
+			label_installedModsList.Location = new Point(444, 97);
+			label_installedModsList.Name = "label_installedModsList";
+			label_installedModsList.Size = new Size(81, 15);
+			label_installedModsList.TabIndex = 19;
+			label_installedModsList.Text = "Existing Mods";
+			// 
 			// Form1
 			// 
 			AutoScaleDimensions = new SizeF(7F, 15F);
@@ -360,10 +390,9 @@
 		private Button button_nextStage;
 		private Panel panel_navigation;
 		private Label label_modDependenciesItemMouseverDescription;
-		private Label label_modDependenciesItemMouseoverTitle;
 		private Panel panel_stage4;
 		private CheckedListBox checkedListBox1;
-		private CheckedListBox checkedListBox_dummy;
+		private CheckedListBox checkedListBox_dummyMissingMods;
 		private Button button_detectExistingMods;
 		private Button button_resetInstallPath;
 		private Button button_browseInstallPath;
@@ -372,5 +401,9 @@
 		private Label label_stage2Title;
 		private Label label_stage3Title;
 		private Label label_stage3Desc;
+		private CheckedListBox checkedListBox_dummyInstalledMods;
+		private ToolTip toolTip1;
+		private Label label_installedModsList;
+		private Label label_missingModsList;
 	}
 }

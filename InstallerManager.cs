@@ -55,6 +55,8 @@ namespace Crackdown_Installer
 		private List<Pd2ModData>? installedBltMods;
 		private List<Pd2ModData>? installedBeardlibMods;
 
+		private List<ModDependencyEntry> dependenciesFromServer;
+
 		private HttpClient httpClientInstance;
 		/// <summary>
 		/// Creates a new InstallerManager instance,
@@ -92,12 +94,10 @@ namespace Crackdown_Installer
 				LogMessage("Unable to automatically find PD2 install directory.");
 			}
 
-
-
-
+			CollectDependencies();
 		}
 
-		public List<ModDependencyEntry> CollectDependencies()
+		public async void CollectDependencies()
 		{
 			List<ModDependencyEntry> result = new();
 			ModDependencyList item;
@@ -108,17 +108,13 @@ namespace Crackdown_Installer
 #pragma warning restore CS0162 // Unreachable code detected
 				string jsonResponse = sr.ReadToEnd();
 				item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
-				/*
-				foreach (ModDependencyEntry bla in item.Response)
-				{
-					LogMessage("Dependency: " + bla.Name);
-				}
-				*/
 			}
 			else
 			{
-				string jsonResponse = SendQueryDependencies();
-				LogMessage("Response Received in IM");
+				/// Send a query to the Crackdown updates repo
+				/// to get a list of packages that Crackdown uses
+				string jsonResponse = await AsyncJsonReq(DEPENDENCIES_JSON_URI);
+				
 				//ModDependencyList item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
 				item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
 			}
@@ -126,12 +122,16 @@ namespace Crackdown_Installer
 			foreach (ModDependencyEntry entry in item.Response) {
 				result.Add(entry);
 			}
-			return result;
+			dependenciesFromServer = result;
+		}
+
+		public List<ModDependencyEntry> GetDependencyEntries() {
+			return dependenciesFromServer;
 		}
 
 		public List<ModDependencyEntry> CollectMissingMods() {
 			List<ModDependencyEntry> missingMods = new();
-			List<ModDependencyEntry> dependencyList = CollectDependencies();
+			List<ModDependencyEntry> dependencyList = GetDependencyEntries();
 
 			foreach (ModDependencyEntry entry in dependencyList)
 			{
@@ -235,27 +235,6 @@ namespace Crackdown_Installer
 		}
 
 		/// <summary>
-		/// Send a query to the Crackdown updates repo
-		/// to get a list of packages that Crackdown uses
-		/// </summary>
-		/// <param name="client"></param>
-		/// <returns></returns>
-		private string SendQueryDependencies()
-		{
-			var jsonResponse = AsyncJsonReq(DEPENDENCIES_JSON_URI);
-
-			//make json document allow trailing commas
-			//JsonDocumentOptions jsonOptions = new()
-			//{
-			//	AllowTrailingCommas = true
-			//};
-
-			//JsonDocument doc = JsonDocument.Parse(jsonResponse.Result, jsonOptions);
-
-			return jsonResponse.Result;
-		}
-
-		/// <summary>
 		/// Shortcut for JsonElement.TryGetProperty()
 		/// </summary>
 		/// <param name="propertyName"></param>
@@ -320,7 +299,6 @@ namespace Crackdown_Installer
 						string modDescription = GetJsonAttribute("description",rootElement, tempElement);
 						string modType = "json";
 						installedMods.Add(new Pd2ModData(modName, modDescription, modVersion, modType));
-						//						LogMessage("Found json mod " + modName);
 					}
 					catch (JsonException e)
 					{
@@ -397,7 +375,6 @@ namespace Crackdown_Installer
 									string modDescription = "";
 									//description is not specified in BeardLib ModCore documentation
 									string modType = "xml";
-									//LogMessage("Found xml mod " + modName);
 									installedMods.Add(new Pd2ModData(modName, modVersion, modDescription, modType));
 								}
 							}

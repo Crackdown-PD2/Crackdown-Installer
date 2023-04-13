@@ -3,21 +3,25 @@ using System.Diagnostics;
 using System.Windows.Forms;
 using System.Reflection.Emit;
 using static Crackdown_Installer.InstallerManager;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using System.Reflection.Metadata.Ecma335;
 
 namespace Crackdown_Installer
 {
 	public partial class Form1 : Form
 	{
+		const int TOOLTIP_HOVER_DURATION = 10000; //10000ms -> 10s
 		int currentPage;
 		int timesClickedTitle;
 		List<Panel> panels;
-		CheckedListBoxDisabledItems checkedListBox_modDependencyItems;
-		bool hasDoneQueryUpdateServer;
+		CheckedListBoxDisabledItems checkedListBox_missingDependencyItems;
+		CheckedListBoxDisabledItems checkedListBox_installedDependencyItems;
+		bool hasDonePopulateDependencies;
 		public Form1()
 		{
 			InitializeComponent();
 
-			hasDoneQueryUpdateServer = false;
+			hasDonePopulateDependencies = false;
 
 			currentPage = 0;
 			button_prevStage.Enabled = false;
@@ -35,43 +39,192 @@ namespace Crackdown_Installer
 
 			panel_stage3.VisibleChanged += new EventHandler(this.panel_stage3_OnVisibleChanged);
 
-			//inherit properties from dummy
-			checkedListBox_modDependencyItems = new();
-			checkedListBox_modDependencyItems.CheckOnClick = checkedListBox_dummy.CheckOnClick;
-			checkedListBox_modDependencyItems.Size = checkedListBox_dummy.Size;
-			checkedListBox_modDependencyItems.AutoSize = checkedListBox_dummy.AutoSize;
-			checkedListBox_modDependencyItems.MinimumSize = checkedListBox_dummy.MinimumSize;
-			checkedListBox_modDependencyItems.MaximumSize = checkedListBox_dummy.MaximumSize;
-			checkedListBox_modDependencyItems.Location = checkedListBox_dummy.Location;
+			//inherit selected properties from dummy
+			checkedListBox_missingDependencyItems = new()
+			{
+				CheckOnClick = checkedListBox_dummyMissingMods.CheckOnClick,
+				Cursor = checkedListBox_dummyMissingMods.Cursor,
+				Size = checkedListBox_dummyMissingMods.Size,
+				MinimumSize = checkedListBox_dummyMissingMods.MinimumSize,
+				MaximumSize = checkedListBox_dummyMissingMods.MaximumSize,
+				Location = checkedListBox_dummyMissingMods.Location
+			};
+			panel_stage3.Controls.Add(checkedListBox_missingDependencyItems);
 
-			panel_stage4.Controls.Add(checkedListBox_modDependencyItems);
+			checkedListBox_installedDependencyItems = new()
+			{
+				CheckOnClick = checkedListBox_dummyInstalledMods.CheckOnClick,
+				Cursor = checkedListBox_dummyInstalledMods.Cursor,
+				Size = checkedListBox_dummyInstalledMods.Size,
+				MinimumSize = checkedListBox_dummyInstalledMods.MinimumSize,
+				MaximumSize = checkedListBox_dummyInstalledMods.MaximumSize,
+				Location = checkedListBox_dummyInstalledMods.Location
+			};
+			panel_stage3.Controls.Add(checkedListBox_installedDependencyItems);
 
+			AddMouseoverToolTip(label_installedModsList, "These are mods that you already have installed.");
+			AddMouseoverToolTip(label_missingModsList, "These are required mods that are either not installed, or are outdated and need to be updated.");
 		}
 
+		/// <summary>
+		/// Adds an event handler to set the given label to the given text when hovering over the given element in the given CheckedListBox.
+		/// </summary>
+		/// <param name="o"></param>
+		/// <param name="checkboxIndex"></param>
+		/// <param name="descriptionText"></param>
+		/// <param name="descLabel"></param>
+		void AddMouseoverDescription(CheckedListBox o, int checkboxIndex, string descriptionText, System.Windows.Forms.Label descLabel)
+		{
+			void OnMouseMove(object sender, EventArgs e)
+			{
 
+				Point pos = o.PointToClient(MousePosition);
+
+				int index = o.IndexFromPoint(pos);
+
+				if (index == checkboxIndex)
+				{
+					pos = this.PointToClient(MousePosition);
+					if (!descLabel.Visible) {
+						descLabel.Show();
+					}
+					descLabel.Text = descriptionText;
+				}
+			}
+
+			void OnMouseLeave(object sender, EventArgs e)
+			{
+				descLabel.Hide();
+			}
+			//o.MouseHover+= new EventHandler(OnMouseHover);
+			o.MouseMove += new MouseEventHandler(OnMouseMove);
+			o.MouseLeave += new EventHandler(OnMouseLeave);
+		}
+
+		/// <summary>
+		/// Adds an event handler to show the given tooltip text when hovering over the given element in the given CheckedListBox.
+		/// </summary>
+		/// <param name="o"></param>
+		/// <param name="checkboxIndex"></param>
+		/// <param name="tooltipText"></param>
+		void AddMouseoverToolTip(CheckedListBox o, int checkboxIndex, string tooltipText)
+		{
+			void OnMouseMove(object sender, EventArgs e)
+			{
+
+				Point pos = o.PointToClient(MousePosition);
+
+				int index = o.IndexFromPoint(pos);
+
+				//TODO optimize by passing a linked list/array of descriptions for the whole CheckedListBox
+				if (index == checkboxIndex)
+				{
+					pos = this.PointToClient(MousePosition);
+					toolTip1.Show(tooltipText, this, pos.X, pos.Y, TOOLTIP_HOVER_DURATION);
+					/*
+					System.Diagnostics.Debug.WriteLine("Mousing over index " + index);
+					//string? s = null;
+					string? s = descriptions[index + 1];
+					if (s != null) { 
+						toolTip1.Show(s, this, pos.X, pos.Y, 5000);
+					}
+					*/
+				}
+			}
+
+			void OnMouseLeave(object sender, EventArgs e)
+			{
+				//hide tooltip
+				Point pos = o.PointToClient(MousePosition);
+				toolTip1.Hide(this);
+			}
+			o.MouseMove += new MouseEventHandler(OnMouseMove);
+			o.MouseLeave += new EventHandler(OnMouseLeave);
+		}
+
+		/// <summary>
+		/// Adds an event handler to show the given tooltip text when hovering over the given Control object.
+		/// </summary>
+		/// <param name="o"></param>
+		/// <param name="tooltipText"></param>
+		void AddMouseoverToolTip(Control o, string tooltipText)
+		{
+			void OnMouseHover(object sender, EventArgs e)
+			{
+				Point pos = o.PointToClient(MousePosition);
+				toolTip1.Show(tooltipText, this, pos.X, pos.Y, TOOLTIP_HOVER_DURATION);
+			}
+			void OnMouseLeave(object sender, EventArgs e)
+			{
+				Point pos = o.PointToClient(MousePosition);
+				toolTip1.Hide(this);
+			}
+			o.MouseHover += new EventHandler(OnMouseHover);
+			o.MouseLeave += new EventHandler(OnMouseLeave);
+		}
+
+		/// <summary>
+		/// Event handler for showing the installation page.
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
 		private void panel_stage3_OnVisibleChanged(object sender, EventArgs e)
 		{
-			if (panel_stage3.Visible && !hasDoneQueryUpdateServer)
+			if (panel_stage3.Visible && !hasDonePopulateDependencies)
 			{
-				/*
-				foreach (ModDependencyEntry a in InstallerWrapper.instMgr.CollectDependencies())
+				List<ModDependencyEntry> dependencyEntries = InstallerWrapper.instMgr.GetDependencyEntries();
+				checkedListBox_missingDependencyItems.Items.Clear();
+				//AddMouseoverToolTip(checkedListBox_installedDependencyItems, "These items are already installed and will be skipped.");
+				//AddMouseoverToolTip(checkedListBox_missingDependencyItems, "These items must be installed in order to use Crackdown.");
+				foreach (ModDependencyEntry entry in dependencyEntries)
 				{
-					LogMessage(a.Name);
-				}
-				List<ModDependencyEntry> missingMods = InstallerWrapper.instMgr.CollectMissingMods();
-				foreach (ModDependencyEntry entry in missingMods)
-				{
-					checkedListBox_modDependencyItems.Items.Clear();
-					int itemIndex = checkedListBox_modDependencyItems.Items.Add(entry.Name);
-					System.Diagnostics.Debug.WriteLine("Adding mod " + entry.Name);
-
-					if (itemIndex != -1 && !(bool)entry.Optional)
+					bool isOptional = entry.Optional ?? false;
+					string? modName = entry.Name;
+					string? modType = entry.DirectoryType;
+					string? modDesc = entry.Description ?? string.Empty;
+					bool isInstalled = false;
+					if (!string.IsNullOrEmpty(modName) && !string.IsNullOrEmpty(modType))
 					{
-						checkedListBox_modDependencyItems.CheckAndDisable(itemIndex);
+						if (modType == "blt")
+						{
+							isInstalled = InstallerWrapper.instMgr.HasBltModInstalled(modName);
+						}
+						else if (modType == "beardlib")
+						{
+							isInstalled = InstallerWrapper.instMgr.HasBeardlibModInstalled(modName);
+						}
 					}
+
+					if (isInstalled)
+					{
+						int itemIndex = checkedListBox_installedDependencyItems.Items.Add(modName, true);
+						//System.Diagnostics.Debug.WriteLine("Adding installed tooltip: " + modDesc + " " + itemIndex);
+						
+						//todo check version and add as optional download if existent but outdated
+						if (itemIndex > -1)
+						{
+							AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex, modDesc);
+							//System.Diagnostics.Debug.WriteLine("Adding installed mod " + modName + " " + itemIndex);
+							checkedListBox_installedDependencyItems.CheckAndDisable(itemIndex);
+						}
+					}
+					else
+					{
+						int itemIndex = checkedListBox_missingDependencyItems.Items.Add(modName, true);
+						AddMouseoverDescription(checkedListBox_missingDependencyItems, itemIndex, modDesc, label_modDependenciesItemMouseverDescription);
+						AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex, modDesc);
+						if (itemIndex != -1)
+						{
+							//System.Diagnostics.Debug.WriteLine("Adding missing mod " + modName + " " + itemIndex);
+							if (!isOptional)
+							{
+								checkedListBox_missingDependencyItems.CheckAndDisable(itemIndex);
+							}
+						}
+					}
+
 				}
-				*/
-				hasDoneQueryUpdateServer = true;
+				hasDonePopulateDependencies = true;
 			}
 		}
 
@@ -228,6 +381,16 @@ namespace Crackdown_Installer
 			{
 				System.Diagnostics.Debug.WriteLine("Stop clicking him, he's already dead!");
 			}
+		}
+
+		private void label_stage3Title_Click(object sender, EventArgs e)
+		{
+
+		}
+
+		private void label1_Click(object sender, EventArgs e)
+		{
+
 		}
 	}
 
