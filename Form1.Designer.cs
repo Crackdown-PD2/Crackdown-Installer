@@ -47,7 +47,6 @@
 			panel_stage3 = new Panel();
 			label_installedModsList = new Label();
 			label_missingModsList = new Label();
-			checkedListBox_dummyInstalledMods = new CheckedListBox();
 			label_modDependenciesItemMouseverDescription = new Label();
 			checkedListBox_dummyMissingMods = new CheckedListBox();
 			label_stage3Title = new Label();
@@ -58,6 +57,7 @@
 			panel_navigation = new Panel();
 			panel_stage4 = new Panel();
 			toolTip1 = new ToolTip(components);
+			checkedListBox_dummyInstalledMods = new CheckedListBox();
 			panel_stage1.SuspendLayout();
 			panel_stage2.SuspendLayout();
 			panel_stage3.SuspendLayout();
@@ -132,7 +132,7 @@
 			// button_quit
 			// 
 			button_quit.Anchor = AnchorStyles.Bottom;
-			button_quit.Location = new Point(742, 24);
+			button_quit.Location = new Point(1007, 24);
 			button_quit.Name = "button_quit";
 			button_quit.Size = new Size(101, 28);
 			button_quit.TabIndex = 2;
@@ -249,17 +249,6 @@
 			label_missingModsList.TabIndex = 18;
 			label_missingModsList.Text = "Pending Downloads";
 			// 
-			// checkedListBox_dummyInstalledMods
-			// 
-			checkedListBox_dummyInstalledMods.CheckOnClick = true;
-			checkedListBox_dummyInstalledMods.Enabled = false;
-			checkedListBox_dummyInstalledMods.FormattingEnabled = true;
-			checkedListBox_dummyInstalledMods.Location = new Point(366, 126);
-			checkedListBox_dummyInstalledMods.Name = "checkedListBox_dummyInstalledMods";
-			checkedListBox_dummyInstalledMods.Size = new Size(266, 166);
-			checkedListBox_dummyInstalledMods.TabIndex = 17;
-			checkedListBox_dummyInstalledMods.Visible = false;
-			// 
 			// label_modDependenciesItemMouseverDescription
 			// 
 			label_modDependenciesItemMouseverDescription.AutoSize = true;
@@ -302,7 +291,7 @@
 			// 
 			// button_detectExistingMods
 			// 
-			button_detectExistingMods.Location = new Point(272, 45);
+			button_detectExistingMods.Location = new Point(267, 52);
 			button_detectExistingMods.Name = "button_detectExistingMods";
 			button_detectExistingMods.Size = new Size(103, 25);
 			button_detectExistingMods.TabIndex = 1;
@@ -314,7 +303,7 @@
 			// button_prevStage
 			// 
 			button_prevStage.Anchor = AnchorStyles.Bottom;
-			button_prevStage.Location = new Point(577, 24);
+			button_prevStage.Location = new Point(845, 24);
 			button_prevStage.Name = "button_prevStage";
 			button_prevStage.Size = new Size(74, 28);
 			button_prevStage.TabIndex = 8;
@@ -325,7 +314,7 @@
 			// button_nextStage
 			// 
 			button_nextStage.Anchor = AnchorStyles.Bottom;
-			button_nextStage.Location = new Point(660, 24);
+			button_nextStage.Location = new Point(925, 24);
 			button_nextStage.Name = "button_nextStage";
 			button_nextStage.Size = new Size(76, 28);
 			button_nextStage.TabIndex = 9;
@@ -350,6 +339,17 @@
 			panel_stage4.Name = "panel_stage4";
 			panel_stage4.Size = new Size(195, 172);
 			panel_stage4.TabIndex = 15;
+			// 
+			// checkedListBox_dummyInstalledMods
+			// 
+			checkedListBox_dummyInstalledMods.CheckOnClick = true;
+			checkedListBox_dummyInstalledMods.Enabled = false;
+			checkedListBox_dummyInstalledMods.FormattingEnabled = true;
+			checkedListBox_dummyInstalledMods.Location = new Point(366, 126);
+			checkedListBox_dummyInstalledMods.Name = "checkedListBox_dummyInstalledMods";
+			checkedListBox_dummyInstalledMods.Size = new Size(266, 166);
+			checkedListBox_dummyInstalledMods.TabIndex = 17;
+			checkedListBox_dummyInstalledMods.Visible = false;
 			// 
 			// Form1
 			// 
@@ -401,9 +401,9 @@
 		private Label label_stage2Title;
 		private Label label_stage3Title;
 		private Label label_stage3Desc;
-		private CheckedListBox checkedListBox_dummyInstalledMods;
 		private ToolTip toolTip1;
 		private Label label_installedModsList;
 		private Label label_missingModsList;
+		private CheckedListBox checkedListBox_dummyInstalledMods;
 	}
 }

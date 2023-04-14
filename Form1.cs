@@ -17,6 +17,12 @@ namespace Crackdown_Installer
 		CheckedListBoxDisabledItems checkedListBox_missingDependencyItems;
 		CheckedListBoxDisabledItems checkedListBox_installedDependencyItems;
 		bool hasDonePopulateDependencies;
+
+		//placeholders; should use the localization resource framework provided by microsoft
+		const string DEPENDENCY_NEEDS_UPDATE = "Older version detected; an update is available.";
+		const string DEPENDENCY_ALREADY_INSTALLED = "This mod has been installed and is up to date.";
+		const string DEPENDENCY_NEEDS_INSTALL = "This mod is required but has not yet been installed.";
+
 		public Form1()
 		{
 			InitializeComponent();
@@ -75,7 +81,7 @@ namespace Crackdown_Installer
 		/// <param name="descLabel"></param>
 		void AddMouseoverDescription(CheckedListBox o, int checkboxIndex, string descriptionText, System.Windows.Forms.Label descLabel)
 		{
-			void OnMouseMove(object sender, EventArgs e)
+			void OnMouseMove(object? sender, EventArgs e)
 			{
 
 				Point pos = o.PointToClient(MousePosition);
@@ -93,7 +99,7 @@ namespace Crackdown_Installer
 				}
 			}
 
-			void OnMouseLeave(object sender, EventArgs e)
+			void OnMouseLeave(object? sender, EventArgs e)
 			{
 				descLabel.Hide();
 			}
@@ -110,7 +116,7 @@ namespace Crackdown_Installer
 		/// <param name="tooltipText"></param>
 		void AddMouseoverToolTip(CheckedListBox o, int checkboxIndex, string tooltipText)
 		{
-			void OnMouseMove(object sender, EventArgs e)
+			void OnMouseMove(object? sender, EventArgs e)
 			{
 
 				Point pos = o.PointToClient(MousePosition);
@@ -133,7 +139,7 @@ namespace Crackdown_Installer
 				}
 			}
 
-			void OnMouseLeave(object sender, EventArgs e)
+			void OnMouseLeave(object? sender, EventArgs e)
 			{
 				//hide tooltip
 				Point pos = o.PointToClient(MousePosition);
@@ -150,12 +156,12 @@ namespace Crackdown_Installer
 		/// <param name="tooltipText"></param>
 		void AddMouseoverToolTip(Control o, string tooltipText)
 		{
-			void OnMouseHover(object sender, EventArgs e)
+			void OnMouseHover(object? sender, EventArgs e)
 			{
 				Point pos = o.PointToClient(MousePosition);
 				toolTip1.Show(tooltipText, this, pos.X, pos.Y, TOOLTIP_HOVER_DURATION);
 			}
-			void OnMouseLeave(object sender, EventArgs e)
+			void OnMouseLeave(object? sender, EventArgs e)
 			{
 				Point pos = o.PointToClient(MousePosition);
 				toolTip1.Hide(this);
@@ -169,51 +175,94 @@ namespace Crackdown_Installer
 		/// </summary>
 		/// <param name="sender"></param>
 		/// <param name="e"></param>
-		private void panel_stage3_OnVisibleChanged(object sender, EventArgs e)
+		private void panel_stage3_OnVisibleChanged(object? sender, EventArgs e)
 		{
 			if (panel_stage3.Visible && !hasDonePopulateDependencies)
 			{
+				InstallerWrapper.instMgr.CollectPd2Mods();
+
 				List<ModDependencyEntry> dependencyEntries = InstallerWrapper.instMgr.GetDependencyEntries();
 				checkedListBox_missingDependencyItems.Items.Clear();
 				//AddMouseoverToolTip(checkedListBox_installedDependencyItems, "These items are already installed and will be skipped.");
 				//AddMouseoverToolTip(checkedListBox_missingDependencyItems, "These items must be installed in order to use Crackdown.");
+
 				foreach (ModDependencyEntry entry in dependencyEntries)
 				{
-					bool isOptional = entry.Optional ?? false;
-					string? modName = entry.Name;
-					string? modType = entry.DirectoryType;
-					string? modDesc = entry.Description ?? string.Empty;
+
+					bool isOptional = entry.Optional;
+					string modName = entry.Name;
+					string modType = entry.DirectoryType;
+					string modDesc = entry.Description;
+					string modVersionType = entry.ModVersionType;
+					string modVersionId = entry.ModVersionId;
 					bool isInstalled = false;
+					string? currentVersion = string.Empty;
+					//optional field for mods; not guaranteed to exist
+
 					if (!string.IsNullOrEmpty(modName) && !string.IsNullOrEmpty(modType))
 					{
+						Pd2ModFolder? modFolder = null;
+						Pd2ModData? definitionFile = null;
 						if (modType == "blt")
 						{
-							isInstalled = InstallerWrapper.instMgr.HasBltModInstalled(modName);
+							modFolder = InstallerWrapper.instMgr.GetInstalledBltMod(modName);
 						}
 						else if (modType == "beardlib")
 						{
-							isInstalled = InstallerWrapper.instMgr.HasBeardlibModInstalled(modName);
+							modFolder = InstallerWrapper.instMgr.GetInstalledBeardlibMod(modName);
 						}
-					}
 
+						if (modFolder != null)
+						{
+							isInstalled = true;
+
+							if (modVersionType == "xml")
+							{
+
+								definitionFile = modFolder.xmlModDefinition;
+							}
+							else if (modVersionType == "json")
+							{
+								definitionFile = modFolder.jsonModDefinition;
+							}
+
+							if (definitionFile != null)
+							{
+								currentVersion = definitionFile.GetVersion();
+							}
+						}
+
+					}
 					if (isInstalled)
 					{
+						//add to installed list
 						int itemIndex = checkedListBox_installedDependencyItems.Items.Add(modName, true);
-						//System.Diagnostics.Debug.WriteLine("Adding installed tooltip: " + modDesc + " " + itemIndex);
-
-						//todo check version and add as optional download if existent but outdated
 						if (itemIndex > -1)
 						{
-							AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex, modDesc);
-							//System.Diagnostics.Debug.WriteLine("Adding installed mod " + modName + " " + itemIndex);
+							AddMouseoverDescription(checkedListBox_installedDependencyItems, itemIndex, modDesc, label_modDependenciesItemMouseverDescription);
 							checkedListBox_installedDependencyItems.CheckAndDisable(itemIndex);
+						}
+
+
+						//check manifest version against installed version
+						//if version mismatch, also add to missing list as an optional update
+						if (modVersionId != null && currentVersion != null && modVersionId != currentVersion) {
+							int itemIndex2 = checkedListBox_missingDependencyItems.Items.Add(modName, true);
+							if (itemIndex2 > -1)
+							{
+								AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex2, DEPENDENCY_NEEDS_UPDATE);
+							}
+						}
+						else
+						{
+							AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex, DEPENDENCY_ALREADY_INSTALLED);
 						}
 					}
 					else
 					{
 						int itemIndex = checkedListBox_missingDependencyItems.Items.Add(modName, true);
 						AddMouseoverDescription(checkedListBox_missingDependencyItems, itemIndex, modDesc, label_modDependenciesItemMouseverDescription);
-						AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex, modDesc);
+						AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex, DEPENDENCY_NEEDS_INSTALL);
 						if (itemIndex != -1)
 						{
 							//System.Diagnostics.Debug.WriteLine("Adding missing mod " + modName + " " + itemIndex);
@@ -237,7 +286,7 @@ namespace Crackdown_Installer
 
 		private void button_start_Click(object sender, EventArgs e)
 		{
-			//
+			
 		}
 
 		private void folderBrowserDialog1_HelpRequest(object sender, EventArgs e)
@@ -294,7 +343,6 @@ namespace Crackdown_Installer
 		private void button_browsePath_Click(object sender, EventArgs e)
 		{
 			DialogResult result = folderBrowserDialog1.ShowDialog();
-			System.Diagnostics.Debug.WriteLine(folderBrowserDialog1.SelectedPath);
 		}
 
 		private void button_nextStage_Click(object sender, EventArgs e)

@@ -1,6 +1,10 @@
 ﻿using System.IO.Compression;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Xml;
+using System.Xml.Linq;
+using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.FileIO;
 using Microsoft.Win32;
 //using ZNix.SuperBLT;
@@ -13,7 +17,7 @@ namespace Crackdown_Installer
 		private const bool DOWNLOAD_CLOBBER_ENABLED = true;
 		//if true, allows file downloads to replace existing files by the same name.
 
-		private const bool DEBUG_LOCAL_JSON_HTTPREQ = false;
+		private const bool DEBUG_LOCAL_JSON_HTTPREQ = true;
 		//if true, skips sending an http req for the json file,
 		//and reads a local json file instead.
 
@@ -27,7 +31,7 @@ namespace Crackdown_Installer
 		//if true, skips cleanup step and does not delete zip files and temp folder after installation,
 		//so that you can manually verify them if you wish.
 
-		private const string CURRENT_INSTALLER_VERSION = "0";
+		private const int CURRENT_INSTALLER_VERSION = 2;
 		private const string DEPENDENCIES_JSON_URL = "https://raw.githubusercontent.com/Crackdown-PD2/deathvox/autoupdate/cd_dependencies.json";
 		private const string SUPERBLT_DLL_WSOCK32_URL = "https://sblt-update.znix.xyz/pd2update/updates/meta.php?id=payday2bltwsockdll"; //holds meta json info about dll updates
 		private const string DLL_DIFFERENCE_INFO_URL = "https://superblt.znix.xyz/#regarding-the-iphlpapidll-vs-wsock32dll-situation"; //a page for humans to read with their eyeballs, about differences between iphlpapi and wsock32 dlls
@@ -54,12 +58,17 @@ namespace Crackdown_Installer
 		private string? pd2InstallDirectory;
 		private DirectoryInfo? tempDownloadsDirectory = null;
 
-		private List<Pd2ModData>? installedBltMods;
-		private List<Pd2ModData>? installedBeardlibMods;
-
-		private List<ModDependencyEntry> dependenciesFromServer;
+		private List<ModDependencyEntry> dependenciesFromServer = new();
 
 		private HttpClient httpClientInstance;
+
+		public List<Pd2ModFolder> installedPd2Mods = new();
+
+		private JsonDocumentOptions DEFAULT_JSON_OPTIONS = new()
+		{
+			AllowTrailingCommas = true
+		};
+
 		/// <summary>
 		/// Creates a new InstallerManager instance,
 		/// which can perform a variety of installation related operations,
@@ -75,27 +84,12 @@ namespace Crackdown_Installer
 			//Directory.Delete(tempDownloadsDirectory.FullName + "/", true);
 
 			pd2InstallDirectory = FindPd2InstallDirectory();
-			if (!string.IsNullOrEmpty(pd2InstallDirectory))
-			{
-
-				//generate installed mods list
-				string modsDirectory = Path.Combine(pd2InstallDirectory, "mods"); //mods folder
-				string modOverridesDirectory = Path.Combine(pd2InstallDirectory, "assets\\mod_overrides\\"); //mod_overrides folder
-
-				string[] modFoldersList =
-				{
-					modsDirectory,
-					modOverridesDirectory
-				};
-				installedBltMods = CollectBltMods(modsDirectory);
-				installedBeardlibMods = CollectBeardlibMods(modFoldersList);
-
-			}
-			else
+			if (string.IsNullOrEmpty(pd2InstallDirectory))
 			{
 				LogMessage("Unable to automatically find PD2 install directory.");
 			}
 
+			//query cd update server
 			CollectDependencies();
 		}
 
@@ -109,21 +103,115 @@ namespace Crackdown_Installer
 				StreamReader sr = new("test.json");
 #pragma warning restore CS0162 // Unreachable code detected
 				string jsonResponse = sr.ReadToEnd();
-				item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
+				//				item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
+//				LogMessage(jsonResponse);
+
+				//create a throwaway temp element to hold the result of TryGetProperty()
+				JsonElement tempElement = new();
+
+				try
+				{
+					JsonDocument jsonDocument = JsonDocument.Parse(jsonResponse, DEFAULT_JSON_OPTIONS);
+					JsonElement rootElement = jsonDocument.RootElement;
+					int documentVersion;
+					int minRequiredVersion;
+					if (rootElement.TryGetProperty("ApiVersion", out tempElement)) {
+						documentVersion = tempElement.GetInt32();
+						if (documentVersion == CURRENT_INSTALLER_VERSION) {
+							
+						}
+						else {
+							if (rootElement.TryGetProperty("MinApiVersion", out tempElement)) {
+								minRequiredVersion = tempElement.GetInt32();
+								if (CURRENT_INSTALLER_VERSION > minRequiredVersion) {
+									//todo send warning that installer may be out of date
+								}
+								else
+								{
+									throw new Exception("Installer is too out of date!");
+								}
+							}
+						}
+					}
+					else {
+						throw new Exception("Invalid response from update server! (no ApiVersion given)");
+					}
+
+					if (rootElement.TryGetProperty("Response", out tempElement)) {
+						for (int i = 0;i<tempElement.GetArrayLength();i++){
+							JsonElement dependencyItem = tempElement[i];
+							JsonElement tempElement2 = new();
+							string dependencyName = GetJsonAttribute("Name", dependencyItem,tempElement2);
+							string dependencyDescription = GetJsonAttribute("Description", dependencyItem, tempElement2);
+							string dependencyVersionType = GetJsonAttribute("VersionType", dependencyItem, tempElement2);
+							string dependencyVersionId = GetJsonAttribute("VersionId", dependencyItem, tempElement2);
+							string dependencyDirectoryType = GetJsonAttribute("DirectoryType", dependencyItem, tempElement2);
+							string dependencyDirectoryName = GetJsonAttribute("DirectoryName", dependencyItem, tempElement2);
+							string dependencyUri = GetJsonAttribute("Uri", dependencyItem, tempElement2);
+							string dependencyProvider = GetJsonAttribute("Provider", dependencyItem, tempElement2);
+							string dependencyBranch = GetJsonAttribute("Branch", dependencyItem, tempElement2);
+							bool dependencyIsOptional;
+							bool dependencyIsRelease;
+							if (dependencyItem.TryGetProperty("Release", out tempElement2))
+							{
+								dependencyIsRelease = tempElement2.GetBoolean();
+							}
+							else {
+								dependencyIsRelease = false;
+							}
+							if (dependencyItem.TryGetProperty("Optional", out tempElement2))
+							{
+								dependencyIsOptional = tempElement2.GetBoolean();
+							}
+							else {
+								dependencyIsOptional = false;
+							}
+							ModDependencyEntry dependencyEntry = new ModDependencyEntry(
+								dependencyName,
+								dependencyDescription,
+								dependencyDirectoryType,
+								dependencyDirectoryName,
+								dependencyProvider,
+								dependencyUri,
+								dependencyBranch,
+								dependencyIsRelease,
+								dependencyVersionType,
+								dependencyVersionId,
+								dependencyIsOptional
+								);
+
+							result.Add(dependencyEntry);
+						}
+
+					}
+					else
+					{
+						throw new Exception("Invalid response from update server! (no Response body)");
+					}
+				}
+				catch (JsonException e)
+				{
+					LogMessage(e.Message);
+				}
+				catch (Exception e)
+				{
+					LogMessage(e.Message);
+				}
 			}
 			else
 			{
 				/// Send a query to the Crackdown updates repo
 				/// to get a list of packages that Crackdown uses
 				string jsonResponse = await AsyncJsonReq(DEPENDENCIES_JSON_URL);
-				
+
 				//ModDependencyList item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
 				item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
+				foreach (ModDependencyEntry entry in item.Response)
+				{
+					result.Add(entry);
+				}
 			}
 
-			foreach (ModDependencyEntry entry in item.Response) {
-				result.Add(entry);
-			}
 			dependenciesFromServer = result;
 		}
 
@@ -137,23 +225,31 @@ namespace Crackdown_Installer
 
 			foreach (ModDependencyEntry entry in dependencyList)
 			{
-				string? modName = entry.Name;
-				string? modType = entry.DirectoryType;
-				if (!string.IsNullOrEmpty(modName) && !string.IsNullOrEmpty(modType))
+				string? dependencyName = entry.Name;
+				string? dependencyVersionType = entry.ModVersionType;
+				string? dependencyVersionId = entry.ModVersionId;
+				if (!string.IsNullOrEmpty(dependencyName) && !string.IsNullOrEmpty(dependencyVersionType))
 				{
-					if (modType == "blt")
+					if (dependencyVersionType == "xml")
 					{
-						if (!HasBltModInstalled(modName))
+						foreach (Pd2ModFolder thisPd2ModFolder in installedPd2Mods)
 						{
-							missingMods.Add(entry);
+							Pd2ModData? xmlData = thisPd2ModFolder.xmlModDefinition;
+							if (xmlData != null)
+							{
+								if (xmlData.GetName() == dependencyName)
+								{
+									string modVersion = xmlData.GetVersion();
+									if (modVersion != dependencyVersionId)
+									{
+										missingMods.Add(entry);
+									}
+								}
+							}
 						}
 					}
-					else if (modType == "beardlib")
-					{
-						if (!HasBeardlibModInstalled(modName))
-						{
-							missingMods.Add(entry);
-						}
+					else if (dependencyVersionType == "json") {
+						//code here
 					}
 				}
 			}
@@ -242,77 +338,174 @@ namespace Crackdown_Installer
 		/// <param name="propertyName"></param>
 		/// <param name="element"></param>
 		/// <returns></returns>
-		private string GetJsonAttribute(string propertyName,JsonElement element) {
+		private string GetJsonAttribute(string propertyName, JsonElement element) {
 			JsonElement tempElementHolder = new JsonElement();
 			return GetJsonAttribute(propertyName, element, tempElementHolder);
 		}
 
 		/// <summary>
-		/// Shortcut for JsonElement.TryGetProperty() which can accept an existing JsonElement instead of creating one for each call
+		/// Shortcut for JsonElement.TryGetProperty() which can accept an existing JsonElement instead of creating one for each call.
+		/// Returns the string value of the element.
+		/// Should only be used when the value of the element is known to be a string.
 		/// </summary>
 		/// <param name="propertyName"></param>
 		/// <param name="element"></param>
 		/// <param name="tempElementHolder"></param>
 		/// <returns></returns>
-		private string GetJsonAttribute(string propertyName,JsonElement element, JsonElement tempElementHolder) {
+		private string GetJsonAttribute(string propertyName, JsonElement element, JsonElement tempElementHolder) {
 			if (element.TryGetProperty(propertyName, out tempElementHolder)) {
 				return tempElementHolder.GetString() ?? string.Empty;
 			};
 			return string.Empty;
 		}
 
-		/// <summary>
-		/// Given the path to the user's mods folder in their PAYDAY 2 installation directory,
-		/// searches each folder inside for a mod.txt json file, parses it, and reads the name of the mod.
-		/// Returns a list of the names of all installed BLT mods.
-		/// </summary>
-		/// <param name="bltModsPath"></param>
-		/// <returns></returns>
-		private List<Pd2ModData> CollectBltMods(string bltModsPath)
-		{
-			List<Pd2ModData> installedMods = new List<Pd2ModData>();
-
-			//default json document options
-			JsonDocumentOptions jsonOptions = new JsonDocumentOptions
-			{
-				AllowTrailingCommas = true
-			};
-
-			//create a throwaway temp element to hold the result of TryGetProperty()
-			JsonElement tempElement = new();
-
-			foreach (string subDirectory in FileSystem.GetDirectories(bltModsPath))
-			{
-				string definitionPath = Path.Combine(bltModsPath, subDirectory, JSON_MOD_DEFINITION_NAME);
-				if (File.Exists(definitionPath))
-				{
-					try
-					{
-						//don't serialize since we have to be much more careful when parsing unknown files;
-						//blt's json parser is very lax, especially when it comes to missing commas
-						var sr = new StreamReader(definitionPath);
-						var jsonStr = sr.ReadToEnd();
-						JsonDocument definitionFile = JsonDocument.Parse(jsonStr, jsonOptions);
-						JsonElement rootElement = definitionFile.RootElement;
-
-						string modName = GetJsonAttribute("name",rootElement, tempElement);
-						string modDesc = GetJsonAttribute("description",rootElement, tempElement);
-						string modVersion = GetJsonAttribute("version",rootElement, tempElement);
-						string modDescription = GetJsonAttribute("description",rootElement, tempElement);
-						string modType = "json";
-						installedMods.Add(new Pd2ModData(modName, modDescription, modVersion, modType));
-					}
-					catch (JsonException e)
-					{
-						LogMessage(e.Message);
-					}
-					catch (Exception e)
-					{
-						LogMessage(e.Message);
+		public Pd2ModFolder? GetInstalledBltMod(string name) {
+			foreach (Pd2ModFolder modFolder in installedPd2Mods) {
+				Pd2ModData? pd2ModData = modFolder.jsonModDefinition;
+				if (pd2ModData != null) {
+					if (pd2ModData.GetName() == name) {
+						return modFolder;
 					}
 				}
 			}
-			return installedMods;
+			return null;
+		}
+		public bool HasBltModInstalled(string name) {
+			foreach (Pd2ModFolder modFolder in installedPd2Mods) {
+				Pd2ModData? pd2ModData = modFolder.jsonModDefinition;
+				if (pd2ModData != null)
+				{
+					if (pd2ModData.GetName() == name) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+		public Pd2ModFolder? GetInstalledBeardlibMod(string name) {
+			foreach (Pd2ModFolder modFolder in installedPd2Mods) {
+				Pd2ModData? pd2ModData = modFolder.xmlModDefinition;
+				if (pd2ModData != null) {
+					if (pd2ModData.GetName() == name) {
+						return modFolder;
+					}
+				}
+			}
+			return null;
+		}
+		public bool HasBeardlibModInstalled(string name) {
+			foreach (Pd2ModFolder modFolder in installedPd2Mods) {
+				Pd2ModData? pd2ModData = modFolder.xmlModDefinition;
+				if (pd2ModData != null) {
+					if (pd2ModData.GetName() == name) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
+		/// <summary>
+		/// Given the path to a folder,
+		/// searches the folder for a mod.txt json file, and creates a new Pd2ModData object to hold the parsed data.
+		/// </summary>
+		/// <param name="modPath"></param>
+		/// <returns></returns>
+		private Pd2ModData? ReadJsonModData(string modPath) 
+		{
+			string definitionPath = Path.Combine(modPath, JSON_MOD_DEFINITION_NAME);
+			if (File.Exists(definitionPath))
+			{
+				StreamReader? sr = null;
+				try
+				{
+					//don't serialize since we have to be much more careful when parsing unknown files;
+					//blt's json parser is very lax, especially when it comes to missing commas
+
+					JsonElement tempElement = new();
+					sr = new StreamReader(definitionPath);
+					string jsonStr = sr.ReadToEnd();
+					JsonDocument definitionFile = JsonDocument.Parse(jsonStr, DEFAULT_JSON_OPTIONS);
+					JsonElement rootElement = definitionFile.RootElement;
+
+					string modName = GetJsonAttribute("name", rootElement, tempElement);
+					string modDescription = GetJsonAttribute("description", rootElement, tempElement);
+					string modVersion = GetJsonAttribute("version", rootElement, tempElement);
+					string modType = "json";
+
+					sr.Close();
+					return new Pd2ModData(modName, modDescription, modVersion, modType, modPath);
+				}
+
+				catch (JsonException e)
+				{
+					LogMessage(e.Message);
+				}
+				catch (Exception e)
+				{
+					LogMessage(e.Message);
+				}
+
+				if (sr != null) {
+					sr.Close();
+				}
+
+			}
+			return null;
+		}
+
+		/// <summary>
+		/// Given the path to a folder,
+		/// searches the folder for a main.xml xml file, and creates a new Pd2ModData object to hold the parsed data.
+		/// /// </summary>
+		/// <param name="modPath"></param>
+		/// <returns></returns>
+		private Pd2ModData? ReadXmlModData(string modPath)
+		{
+			string definitionPath = Path.Combine(modPath, XML_MOD_DEFINITION_NAME);
+			if (Microsoft.VisualBasic.FileIO.FileSystem.FileExists(definitionPath))
+			{
+				try
+				{
+					XmlDocument xmlDoc = new();
+					xmlDoc.Load(definitionPath);
+					//Display the contents of the child nodes.
+					XmlElement? element = xmlDoc.DocumentElement;
+					if (element != null)
+					{
+						XmlAttributeCollection? attrcoll = element.Attributes;
+						if (attrcoll != null)
+						{
+							string modName = GetXmlAttribute(attrcoll, "name");
+							string modVersion = GetXmlAttribute(attrcoll, "version");
+							string modDescription = GetXmlAttribute(attrcoll, "description");
+							//note: description is not specified in BeardLib ModCore documentation
+							//but we can look for it anyway
+
+							
+							if (string.IsNullOrEmpty(modVersion))
+							{
+								XmlElement? assetUpdatesElement = element["AssetUpdates"];
+								if (assetUpdatesElement != null)
+								{
+									XmlAttributeCollection assetUpdatesCollection = assetUpdatesElement.Attributes;
+
+									modVersion = GetXmlAttribute(assetUpdatesCollection, "version");
+								}
+							}
+
+							string modType = "xml";
+							return new Pd2ModData(modName, modDescription, modVersion, modType, modPath);
+						}
+					}
+				}
+				catch (IOException e)
+				{
+					Console.WriteLine("The file could not be read:");
+					Console.WriteLine(e.Message);
+				}
+			}
+			return null;
 		}
 
 		/// <summary>
@@ -345,55 +538,8 @@ namespace Crackdown_Installer
 			return GetXmlAttribute(collection, elementName) ?? fallback ?? string.Empty;
 		}
 
-		/// <summary>
-		/// Finds all valid BeardLib mods, as detected by the presence of a valid XML file called main.xml.
-		/// </summary>
-		/// <param name="modsFolderPaths"></param>
-		/// <returns></returns>
-		private List<Pd2ModData> CollectBeardlibMods(string[] modsFolderPaths)
-		{
-			List<Pd2ModData> installedMods = new();
-			foreach (string modsFolderPath in modsFolderPaths)
-			{
-				foreach (string modFolder in FileSystem.GetDirectories(modsFolderPath))
-				{
-					string definitionPath = Path.Combine(modFolder, XML_MOD_DEFINITION_NAME);
-
-					if (FileSystem.FileExists(definitionPath))
-					{
-						try
-						{
-							XmlDocument xmlDoc = new();
-							xmlDoc.Load(definitionPath);
-							//Display the contents of the child nodes.
-							XmlElement? element = xmlDoc.DocumentElement;
-							if (element != null)
-							{
-								XmlAttributeCollection? attrcoll = element.Attributes;
-								if (attrcoll != null)
-								{
-									string modName = GetXmlAttribute(attrcoll, "name");
-									string modVersion = GetXmlAttribute(attrcoll, "version");
-									string modDescription = "";
-									//description is not specified in BeardLib ModCore documentation
-									string modType = "xml";
-									installedMods.Add(new Pd2ModData(modName, modVersion, modDescription, modType));
-								}
-							}
-						}
-						catch (IOException e)
-						{
-							Console.WriteLine("The file could not be read:");
-							Console.WriteLine(e.Message);
-						}
-					}
-				}
-			}
-			return installedMods;
-		}
 
 		/// <summary>
-		/// 
 		/// Downloads the given file to the temp directory, 
 		/// unzips it there,
 		/// and moves the unzipped contents to the specified destination directory.
@@ -412,7 +558,6 @@ namespace Crackdown_Installer
 			{
 				LogMessage("DEBUG: Pretended to download and write " + siteUri + " to " + downloadFilePath + " and move to final location " + installFilePath + "but didn't actually. :)");
 
-
 				return true;
 			}
 
@@ -420,7 +565,6 @@ namespace Crackdown_Installer
 			//debug option
 			try
 			{
-
 
 				LogMessage("Downloading: " + siteUri + " to " + downloadDir + "...");
 
@@ -442,7 +586,7 @@ namespace Crackdown_Installer
 					LogMessage("Moving " + modFolder + " to " + installFilePath + "...");
 					if (!DEBUG_NO_FILE_INSTALL)
 					{
-						FileSystem.MoveDirectory(modFolder, installFilePath, DOWNLOAD_CLOBBER_ENABLED);
+						Microsoft.VisualBasic.FileIO.FileSystem.MoveDirectory(modFolder, installFilePath, DOWNLOAD_CLOBBER_ENABLED);
 					}
 					if (!DEBUG_NO_FILE_CLEANUP)
 					{
@@ -474,75 +618,45 @@ namespace Crackdown_Installer
 		}
 
 		/// <summary>
-		/// Given a list of PD2 mod objects, checks for each mod in the user's PD2 installation. 
-		/// Returns a list of any PD2 mod objects that were not found installed.
+		/// 
 		/// </summary>
-		/// <param name="dependenciesData"></param>
-		public List<Pd2ModData> CheckMods(List<Pd2ModData> dependenciesData)
-		{
-			List<Pd2ModData> missingMods = new List<Pd2ModData>();
-			if (dependenciesData != null)
-			{
-				foreach (Pd2ModData modData in dependenciesData)
-				{
-					string modName = modData.GetName();
-					string modType = modData.GetModType();
-					if (modType == "json")
-					{
-						if (!this.HasBltModInstalled(modName))
-						{
-							missingMods.Add(modData);
-						}
-					}
-					else if (modType == "xml")
-					{
-						if (!this.HasBeardlibModInstalled(modName))
-						{
-							missingMods.Add(modData);
-						}
-					}
-				}
-			}
-			return missingMods;
-		}
-
-		/// <summary>
-		/// Given the name of the mod as defined in the definition file mod.txt, 
-		/// searches for installed mods by this name.
-		/// </summary>
-		/// <param name="modName"></param>
 		/// <returns></returns>
-		public bool HasBltModInstalled(string modName)
+		public void CollectPd2Mods()
 		{
-			if (installedBltMods == null) { return false; }
-			foreach (Pd2ModData modData in installedBltMods)
+			string installPath = GetPd2InstallDirectory();
+			List<Pd2ModFolder> result = new();
+			string modsPath = Path.Combine(installPath, "mods/");
+			string modOverridesPath = Path.Combine(installPath, "assets/mod_overrides/");
+
+
+			//search mods folder 
+			foreach (string subDirectory in Microsoft.VisualBasic.FileIO.FileSystem.GetDirectories(modsPath))
 			{
-				if (modData.GetName() == modName)
+				Pd2ModData? newBltMod = ReadJsonModData(subDirectory);
+				Pd2ModData? newBeardlibMod = ReadXmlModData(subDirectory);
+
+				//must have at least one valid mod definition file to be counted as a mod
+				if (newBltMod != null || newBeardlibMod != null)
 				{
-					return true;
+					Pd2ModFolder newModFolder = new Pd2ModFolder(newBltMod, newBeardlibMod);
+					result.Add(newModFolder);
 				}
 			}
-			return false;
-		}
 
-		/// <summary>
-		/// Given the name of the mod as defined in the definition file main.xml, 
-		/// searches for installed mods by this name.
-		/// </summary>
-		/// <param name="modName"></param>
-		/// <returns></returns>
-		public bool HasBeardlibModInstalled(string modName)
-		{
-			if (installedBeardlibMods == null) { return false; }
 
-			foreach (Pd2ModData modData in installedBeardlibMods)
+			//search mod_overrides folder (beardlib mods only)
+			foreach (string subDirectory in Microsoft.VisualBasic.FileIO.FileSystem.GetDirectories(modOverridesPath))
 			{
-				if (modData.GetName() == modName)
+				Pd2ModData? newBeardlibMod = ReadXmlModData(subDirectory);
+				if (newBeardlibMod != null)
 				{
-					return true;
+					Pd2ModFolder newModFolder = new Pd2ModFolder(null, newBeardlibMod);
+					result.Add(newModFolder);
 				}
 			}
-			return false;
+
+			installedPd2Mods = result;
+			//return result;
 		}
 
 		/// <summary>
@@ -555,13 +669,15 @@ namespace Crackdown_Installer
 			private string Description { get; set; }
 			private string ModVersion { get; set; }
 			private string ModType { get; set; }
+			private string ModPath{ get; set; }
 
-			public Pd2ModData(string? name, string? description, string? version, string? modType)
+			public Pd2ModData(string? name, string? description, string? version, string? modType, string? modPath)
 			{
 				Name = name ?? string.Empty;
 				Description = description ?? string.Empty;
 				ModVersion = version ?? string.Empty;
 				ModType = modType ?? string.Empty;
+				ModPath = modPath ?? string.Empty;
 			}
 			
 			/// <summary>
@@ -587,9 +703,27 @@ namespace Crackdown_Installer
 			{
 				return ModType;
 			}
+			
+			public string GetModPath()
+			{
+				return ModPath;
+			}
 
 		}
-		
+
+		public class Pd2ModFolder
+		{
+			public Pd2ModData? jsonModDefinition;
+			public Pd2ModData? xmlModDefinition;
+			public Pd2ModFolder(Pd2ModData? jsonDefinition, Pd2ModData? xmlDefinition)
+			{
+				jsonModDefinition = jsonDefinition;
+				xmlModDefinition = xmlDefinition;
+			}
+		}
+		/// <summary>
+		/// A class to represent the schema of the json manifest returned from the Crackdown update server
+		/// </summary>
 		public class ModDependencyList
 		{
 			public IList<ModDependencyEntry>? Response { get; set; }
@@ -601,24 +735,38 @@ namespace Crackdown_Installer
 
 		}
 
+		/// <summary>
+		/// A class to represent the schema of a dependency package (mod) that needs to be downloaded, as received from the Crackdown update server
+		/// </summary>
 		public class ModDependencyEntry
 		{
-			public string? Name { get; set; }
-			public string? Description { get; set; }
-			public string? DirectoryType { get; set; }
-			public string? DirectoryName { get; set; }
-			public string? Provider { get; set; }
-			public string? Uri { get; set; }
-			public string? Branch { get; set; }
-			public bool? Release { get; set; }
-			public bool? Optional { get; set; }
+			public string Name { get; set; }
+			public string Description { get; set; }
+			public string DirectoryType { get; set; }
+			public string DirectoryName { get; set; }
+			public string Provider { get; set; }
+			public string Uri { get; set; }
+			public string Branch { get; set; }
+			public bool Release { get; set; }
+			public string ModVersionType { get; set; }
+			public string ModVersionId { get; set; }
+			public bool Optional { get; set; }
 
-			//public string ModVersion { get; set; }
-			//public string Hash { get; set }
-			//maybe we'll use these for manual version checking for direct downloads later
+			public ModDependencyEntry(string name, string description, string directoryType, string directoryName, string provider, string uri, string branch, bool release, string modVersionType, string modVersionId, bool optional)
+			{
+				Name = name;
+				Description = description;
+				DirectoryType = directoryType;
+				DirectoryName = directoryName;
+				Provider = provider;
+				Uri = uri;
+				Branch = branch;
+				Release = release;
+				ModVersionType = modVersionType;
+				ModVersionId = modVersionId;
+				Optional = optional;
+			}
 		}
-
-
 
 		/// <summary>
 		/// 
