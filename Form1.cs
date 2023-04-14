@@ -239,6 +239,7 @@ namespace Crackdown_Installer
 						int itemIndex = checkedListBox_installedDependencyItems.Items.Add(modName, true);
 						if (itemIndex > -1)
 						{
+							//							AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex);
 							AddMouseoverDescription(checkedListBox_installedDependencyItems, itemIndex, modDesc, label_modDependenciesItemMouseverDescription);
 							checkedListBox_installedDependencyItems.CheckAndDisable(itemIndex);
 						}
@@ -246,16 +247,18 @@ namespace Crackdown_Installer
 
 						//check manifest version against installed version
 						//if version mismatch, also add to missing list as an optional update
-						if (modVersionId != null && currentVersion != null && modVersionId != currentVersion) {
+						if (modVersionId != null && currentVersion != null && modVersionId != currentVersion)
+						{
 							int itemIndex2 = checkedListBox_missingDependencyItems.Items.Add(modName, true);
 							if (itemIndex2 > -1)
 							{
 								AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex2, DEPENDENCY_NEEDS_UPDATE);
+								AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex, DEPENDENCY_NEEDS_UPDATE);
 							}
 						}
 						else
 						{
-							AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex, DEPENDENCY_ALREADY_INSTALLED);
+							AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex, DEPENDENCY_ALREADY_INSTALLED);
 						}
 					}
 					else
@@ -286,7 +289,7 @@ namespace Crackdown_Installer
 
 		private void button_start_Click(object sender, EventArgs e)
 		{
-			
+
 		}
 
 		private void folderBrowserDialog1_HelpRequest(object sender, EventArgs e)
