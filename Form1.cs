@@ -5,6 +5,8 @@ using System.Reflection.Emit;
 using static Crackdown_Installer.InstallerManager;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using System.Reflection.Metadata.Ecma335;
+using System.Drawing.Text;
+using System.Security.Policy;
 
 namespace Crackdown_Installer
 {
@@ -18,10 +20,16 @@ namespace Crackdown_Installer
 		CheckedListBoxDisabledItems checkedListBox_installedDependencyItems;
 		bool hasDonePopulateDependencies;
 
+		List<ModDependencyEntry> allModsToInstall = new();
+		List<ModDependencyEntry> selectedModsToInstall = new();
+
 		//placeholders; should use the localization resource framework provided by microsoft
 		const string DEPENDENCY_NEEDS_UPDATE = "Older version detected; an update is available.";
 		const string DEPENDENCY_ALREADY_INSTALLED = "This mod has been installed and is up to date.";
 		const string DEPENDENCY_NEEDS_INSTALL = "This mod is required but has not yet been installed.";
+		const string INSTALL_STATUS_TEXT = "$NAME$ : $STATUS$";
+		const string TOOLTIP_DEPENDENCY_ALREADY_INSTALLED = "These are mods that you already have installed.";
+		const string TOOLTIP_DEPENDENCY_NEEDS_INSTALL = "These are required mods that are either not installed, or are outdated and need to be updated.";
 
 		public Form1()
 		{
@@ -41,9 +49,12 @@ namespace Crackdown_Installer
 			panels = new List<Panel>();
 			panels.Add(panel_stage1);
 			panels.Add(panel_stage2);
-			panels.Add(panel_stage3);//		panels.Add(panelNavigation)
+			panels.Add(panel_stage3);
+			panels.Add(panel_stage4);
+			//		panels.Add(panelNavigation)
 
 			panel_stage3.VisibleChanged += new EventHandler(this.panel_stage3_OnVisibleChanged);
+			panel_stage4.VisibleChanged += new EventHandler(this.panel_stage4_OnVisibleChanged);
 
 			//inherit selected properties from dummy
 			checkedListBox_missingDependencyItems = new()
@@ -68,8 +79,18 @@ namespace Crackdown_Installer
 			};
 			panel_stage3.Controls.Add(checkedListBox_installedDependencyItems);
 
-			AddMouseoverToolTip(label_installedModsList, "These are mods that you already have installed.");
-			AddMouseoverToolTip(label_missingModsList, "These are required mods that are either not installed, or are outdated and need to be updated.");
+			AddMouseoverToolTip(label_installedModsList, TOOLTIP_DEPENDENCY_ALREADY_INSTALLED);
+			AddMouseoverToolTip(label_missingModsList, TOOLTIP_DEPENDENCY_NEEDS_INSTALL);
+		}
+
+		void SetDownloadProgressBar(System.Windows.Forms.ProgressBar p, int current, int total)
+		{
+			p.Value = current / total * 100;
+		}
+
+		void SetDownloadProgressBar(System.Windows.Forms.ProgressBar p, int progress)
+		{
+			p.Value = progress;
 		}
 
 		/// <summary>
@@ -254,6 +275,9 @@ namespace Crackdown_Installer
 							{
 								AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex2, DEPENDENCY_NEEDS_UPDATE);
 								AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex, DEPENDENCY_NEEDS_UPDATE);
+
+
+								allModsToInstall.Add(entry);
 							}
 						}
 						else
@@ -266,6 +290,7 @@ namespace Crackdown_Installer
 						int itemIndex = checkedListBox_missingDependencyItems.Items.Add(modName, true);
 						AddMouseoverDescription(checkedListBox_missingDependencyItems, itemIndex, modDesc, label_modDependenciesItemMouseverDescription);
 						AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex, DEPENDENCY_NEEDS_INSTALL);
+						allModsToInstall.Add(entry);
 						if (itemIndex != -1)
 						{
 							//System.Diagnostics.Debug.WriteLine("Adding missing mod " + modName + " " + itemIndex);
@@ -281,15 +306,50 @@ namespace Crackdown_Installer
 			}
 		}
 
+		/// <summary>
+		/// Event handler for showing the installation page.
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
+		private void panel_stage4_OnVisibleChanged(object? sender, EventArgs e)
+		{
+			if (panel_stage4.Visible)
+			{
+				selectedModsToInstall.Clear();
+				foreach (int i in checkedListBox_missingDependencyItems.CheckedIndices)
+				{
+					ModDependencyEntry entry = allModsToInstall[i];
+					if (entry != null)
+					{
+						selectedModsToInstall.Add(entry);
+					}
+				}
+
+				listBox_downloadList.Items.Clear();
+				foreach (ModDependencyEntry m in selectedModsToInstall)
+				{
+					string statusText = INSTALL_STATUS_TEXT.Replace("$NAME$", m.Name)
+							.Replace("$STATUS$", "Pending...");
+					int i = listBox_downloadList.Items.Add(statusText);
+				}
+			}
+		}
+
 		//quit button
 		private void button1_Click(object sender, EventArgs e)
 		{
 			Application.Exit();
 		}
 
-		private void button_start_Click(object sender, EventArgs e)
+		//start download button
+		private async void button_start_Click(object sender, EventArgs e)
 		{
-
+			foreach (ModDependencyEntry dependencyEntry in selectedModsToInstall)
+			{
+				System.Diagnostics.Debug.WriteLine(dependencyEntry.Name);
+				bool success = await InstallerWrapper.instMgr.DownloadDependency(dependencyEntry);
+				System.Diagnostics.Debug.WriteLine("Success: " + success);
+			}
 		}
 
 		private void folderBrowserDialog1_HelpRequest(object sender, EventArgs e)
@@ -440,7 +500,12 @@ namespace Crackdown_Installer
 
 		}
 
-		private void label1_Click(object sender, EventArgs e)
+		private void pictureBox_cdLogo_Click(object sender, EventArgs e)
+		{
+
+		}
+
+		private void label_modDependenciesItemMouseverDescription_Click(object sender, EventArgs e)
 		{
 
 		}
@@ -471,9 +536,9 @@ namespace Crackdown_Installer
 		{
 			if (e.Index != -1)
 			{
-				string s = Items[e.Index].ToString();
+				string s = Items[e.Index].ToString() ?? string.Empty;
 
-				if (_checkedAndDisabledItems.Contains(s) || _checkedAndDisabledIndexes.Contains(e.Index))
+				if (!string.IsNullOrEmpty(s) && (_checkedAndDisabledItems.Contains(s)) || _checkedAndDisabledIndexes.Contains(e.Index))
 				{
 					System.Windows.Forms.VisualStyles.CheckBoxState state = System.Windows.Forms.VisualStyles.CheckBoxState.CheckedDisabled;
 					Size glyphSize = CheckBoxRenderer.GetGlyphSize(e.Graphics, state);

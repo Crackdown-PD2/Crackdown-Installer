@@ -4,6 +4,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
+using Crackdown_Installer;
 using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.FileIO;
 using Microsoft.Win32;
@@ -14,7 +15,7 @@ namespace Crackdown_Installer
 {
 	internal class InstallerManager
 	{
-		private const bool DOWNLOAD_CLOBBER_ENABLED = true;
+		private const bool DOWNLOAD_CLOBBER_ENABLED = false;
 		//if true, allows file downloads to replace existing files by the same name.
 
 		private const bool DEBUG_LOCAL_JSON_HTTPREQ = true;
@@ -80,7 +81,7 @@ namespace Crackdown_Installer
 
 			// Registry.GetValue("\\HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\Shell\\Associations\\URLAssociations\\https\\UserChoice", "SteamPath", "");
 
-			//tempDownloadsDirectory = Directory.CreateTempSubdirectory("crackdowninstaller_");
+			tempDownloadsDirectory = Directory.CreateTempSubdirectory("crackdowninstaller_");
 			//Directory.Delete(tempDownloadsDirectory.FullName + "/", true);
 
 			pd2InstallDirectory = FindPd2InstallDirectory();
@@ -170,7 +171,7 @@ namespace Crackdown_Installer
 								dependencyName,
 								dependencyDescription,
 								dependencyDirectoryType,
-								dependencyDirectoryName,
+								dependencyDirectoryName.Replace("/", "\\"),
 								dependencyProvider,
 								dependencyUri,
 								dependencyBranch,
@@ -248,8 +249,23 @@ namespace Crackdown_Installer
 							}
 						}
 					}
-					else if (dependencyVersionType == "json") {
-						//code here
+					else if (dependencyVersionType == "json")
+					{
+						foreach (Pd2ModFolder thisPd2ModFolder in installedPd2Mods)
+						{
+							Pd2ModData? jsonData = thisPd2ModFolder.jsonModDefinition;
+							if (jsonData != null)
+							{
+								if (jsonData.GetName() == dependencyName)
+								{
+									string modVersion = jsonData.GetVersion();
+									if (modVersion != dependencyVersionId)
+									{
+										missingMods.Add(entry);
+									}
+								}
+							}
+						}
 					}
 				}
 			}
@@ -539,6 +555,101 @@ namespace Crackdown_Installer
 		}
 
 
+		public async Task<bool> DownloadDependency(ModDependencyEntry dependencyEntry) {
+			string downloadDir = tempDownloadsDirectory.FullName;
+
+			string downloadUri = "";
+			string? installDir = null;
+
+			string provider = dependencyEntry.Provider;
+			string branch = dependencyEntry.Branch;
+			string uri = dependencyEntry.Uri;
+
+			//get url to query for file download
+			if (provider == "github")
+			{
+				string queryUrl;
+				if (dependencyEntry.Release)
+				{
+					queryUrl = PROVIDER_GITHUB_RELEASE_URL.Replace("$id$",uri);
+					try
+					{
+						string jsonData = await AsyncJsonReq(queryUrl);
+
+						JsonDocument releaseData = JsonDocument.Parse(jsonData,DEFAULT_JSON_OPTIONS);
+						JsonElement rootElement = releaseData.RootElement;
+						downloadUri = GetJsonAttribute("zipball_url",rootElement);
+					}
+					catch (Exception e) {
+						LogMessage(e);
+						//set status fail
+						return false;
+					}
+				}
+				else
+				{
+					downloadUri = PROVIDER_GITHUB_DIRECT_URL.Replace("$id$", uri)
+						.Replace("$branch$", branch);
+					//queryUrl = PROVIDER_GITHUB_COMMIT_URL.Replace("$id$", uri)
+					//	.Replace("$branch$", branch);
+				}
+			}
+			else if (provider == "gitlab")
+			{
+				if (dependencyEntry.Release)
+				{
+					//downloadUri = PROVIDER_GITLAB_COMMIT_URL;
+					//not currently supported
+					return false;
+				}
+				else
+				{
+					downloadUri = PROVIDER_GITLAB_RELEASE_URL.Replace("$id$",uri);
+				}
+			}
+			else if (provider == "direct")
+			{
+				downloadUri = uri;
+			}
+			else if (provider == "modworkshop") {
+				//not yet supported
+				return false;
+			}
+			else
+			{
+				//unknown provider type
+				return false;
+			}
+
+			//get final installation location
+			if (dependencyEntry.DirectoryType == "beardlib")
+			{
+				installDir = pd2InstallDirectory + "mods\\" + dependencyEntry.DirectoryName;
+			}
+			else if (dependencyEntry.DirectoryType == "blt")
+			{
+				installDir = pd2InstallDirectory + "mods\\" + dependencyEntry.DirectoryName;
+			}
+			else if (dependencyEntry.DirectoryType == "overrides")
+			{
+				installDir = pd2InstallDirectory + "assets\\mod_overrides\\" + dependencyEntry.DirectoryName;
+			}
+			else if (dependencyEntry.DirectoryType == "root")
+			{
+				installDir = pd2InstallDirectory + dependencyEntry.DirectoryName;
+			}
+			else
+			{
+				//unknown install directory type!
+				return false;
+			}
+			if (installDir != null)
+			{
+				return DownloadPackage(downloadDir, downloadUri, installDir);
+			}
+			return false;
+		}
+
 		/// <summary>
 		/// Downloads the given file to the temp directory, 
 		/// unzips it there,
@@ -552,7 +663,7 @@ namespace Crackdown_Installer
 		public bool DownloadPackage(string downloadDir, string siteUri, string installFilePath)
 		{
 			string downloadFileName = "tmp.zip";
-			string downloadFilePath = downloadDir + downloadFileName;
+			string downloadFilePath = Path.Combine(downloadDir + downloadFileName);
 
 			if (DEBUG_NO_FILE_DOWNLOAD)
 			{
@@ -625,8 +736,8 @@ namespace Crackdown_Installer
 		{
 			string installPath = GetPd2InstallDirectory();
 			List<Pd2ModFolder> result = new();
-			string modsPath = Path.Combine(installPath, "mods/");
-			string modOverridesPath = Path.Combine(installPath, "assets/mod_overrides/");
+			string modsPath = Path.Combine(installPath, "mods\\");
+			string modOverridesPath = Path.Combine(installPath, "assets\\mod_overrides\\");
 
 
 			//search mods folder 
