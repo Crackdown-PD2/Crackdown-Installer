@@ -24,12 +24,14 @@ namespace Crackdown_Installer
 		List<ModDependencyEntry> selectedModsToInstall = new();
 
 		//placeholders; should use the localization resource framework provided by microsoft
-		const string DEPENDENCY_NEEDS_UPDATE = "Older version detected; an update is available.";
+		const string TOOLTIP_DEPENDENCY_NEEDS_UPDATE = "Older version detected; an update is available.";
 		const string DEPENDENCY_ALREADY_INSTALLED = "This mod has been installed and is up to date.";
-		const string DEPENDENCY_NEEDS_INSTALL = "This mod is required but has not yet been installed.";
-		const string INSTALL_STATUS_TEXT = "$NAME$ : $STATUS$";
+		const string TOOLTIP_DEPENDENCY_NEEDS_INSTALL = "This dependency has not yet been installed.";
+		const string INSTALL_STATUS_TEXT = "[$STATUS$] $NAME$";
 		const string TOOLTIP_DEPENDENCY_ALREADY_INSTALLED = "These are mods that you already have installed.";
-		const string TOOLTIP_DEPENDENCY_NEEDS_INSTALL = "These are required mods that are either not installed, or are outdated and need to be updated.";
+		const string INSTALL_STATUS_PENDING = "Pending";
+		const string INSTALL_STATUS_DONE = "Done";
+		const string INSTALL_STATUS_FAILED = "Failed";
 
 		public Form1()
 		{
@@ -218,6 +220,7 @@ namespace Crackdown_Installer
 					string modVersionId = entry.ModVersionId;
 					bool isInstalled = false;
 					string? currentVersion = string.Empty;
+
 					//optional field for mods; not guaranteed to exist
 
 					if (!string.IsNullOrEmpty(modName) && !string.IsNullOrEmpty(modType))
@@ -260,7 +263,7 @@ namespace Crackdown_Installer
 						int itemIndex = checkedListBox_installedDependencyItems.Items.Add(modName, true);
 						if (itemIndex > -1)
 						{
-							//							AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex);
+							//AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex);
 							AddMouseoverDescription(checkedListBox_installedDependencyItems, itemIndex, modDesc, label_modDependenciesItemMouseverDescription);
 							checkedListBox_installedDependencyItems.CheckAndDisable(itemIndex);
 						}
@@ -273,9 +276,8 @@ namespace Crackdown_Installer
 							int itemIndex2 = checkedListBox_missingDependencyItems.Items.Add(modName, true);
 							if (itemIndex2 > -1)
 							{
-								AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex2, DEPENDENCY_NEEDS_UPDATE);
-								AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex, DEPENDENCY_NEEDS_UPDATE);
-
+								AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex2, TOOLTIP_DEPENDENCY_NEEDS_UPDATE);
+								AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex, TOOLTIP_DEPENDENCY_NEEDS_UPDATE);
 
 								allModsToInstall.Add(entry);
 							}
@@ -288,12 +290,12 @@ namespace Crackdown_Installer
 					else
 					{
 						int itemIndex = checkedListBox_missingDependencyItems.Items.Add(modName, true);
-						AddMouseoverDescription(checkedListBox_missingDependencyItems, itemIndex, modDesc, label_modDependenciesItemMouseverDescription);
-						AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex, DEPENDENCY_NEEDS_INSTALL);
 						allModsToInstall.Add(entry);
 						if (itemIndex != -1)
 						{
+							AddMouseoverDescription(checkedListBox_missingDependencyItems, itemIndex, modDesc, label_modDependenciesItemMouseverDescription);
 							//System.Diagnostics.Debug.WriteLine("Adding missing mod " + modName + " " + itemIndex);
+							AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex, TOOLTIP_DEPENDENCY_NEEDS_INSTALL);
 							if (!isOptional)
 							{
 								checkedListBox_missingDependencyItems.CheckAndDisable(itemIndex);
@@ -329,7 +331,7 @@ namespace Crackdown_Installer
 				foreach (ModDependencyEntry m in selectedModsToInstall)
 				{
 					string statusText = INSTALL_STATUS_TEXT.Replace("$NAME$", m.Name)
-							.Replace("$STATUS$", "Pending...");
+							.Replace("$STATUS$", INSTALL_STATUS_PENDING);
 					int i = listBox_downloadList.Items.Add(statusText);
 				}
 			}
@@ -344,12 +346,16 @@ namespace Crackdown_Installer
 		//start download button
 		private async void button_start_Click(object sender, EventArgs e)
 		{
+			button_startDownload.Enabled = false;
+			InstallerWrapper.instMgr.CreateTempDirectory();
 			foreach (ModDependencyEntry dependencyEntry in selectedModsToInstall)
 			{
 				System.Diagnostics.Debug.WriteLine(dependencyEntry.Name);
 				bool success = await InstallerWrapper.instMgr.DownloadDependency(dependencyEntry);
 				System.Diagnostics.Debug.WriteLine("Success: " + success);
 			}
+			InstallerWrapper.instMgr.DisposeTempDirectory();
+			button_startDownload.Enabled = true;
 		}
 
 		private void folderBrowserDialog1_HelpRequest(object sender, EventArgs e)

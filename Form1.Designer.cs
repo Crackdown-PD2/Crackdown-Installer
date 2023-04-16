@@ -60,6 +60,10 @@
 			button_prevStage = new Button();
 			button_nextStage = new Button();
 			panel_navigation = new Panel();
+			label_navigation_stage4 = new Label();
+			label_navigation_stage3 = new Label();
+			label_navigation_stage2 = new Label();
+			label_navigation_stage1 = new Label();
 			toolTip1 = new ToolTip(components);
 			panel_stage5 = new Panel();
 			label_downloadStatusDesc = new Label();
@@ -67,10 +71,6 @@
 			listBox_downloadList = new ListBox();
 			progressBar_downloadIndividual = new ProgressBar();
 			panel_stage4 = new Panel();
-			label_navigation_stage1 = new Label();
-			label_navigation_stage2 = new Label();
-			label_navigation_stage3 = new Label();
-			label_navigation_stage4 = new Label();
 			panel_stage1.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
 			splitContainer1.Panel1.SuspendLayout();
@@ -426,6 +426,46 @@
 			panel_navigation.TabIndex = 10;
 			panel_navigation.Paint += panel4_Paint;
 			// 
+			// label_navigation_stage4
+			// 
+			label_navigation_stage4.AutoSize = true;
+			label_navigation_stage4.Location = new Point(374, 18);
+			label_navigation_stage4.Name = "label_navigation_stage4";
+			label_navigation_stage4.Size = new Size(113, 15);
+			label_navigation_stage4.TabIndex = 13;
+			label_navigation_stage4.Text = "Download Packages";
+			label_navigation_stage4.Visible = false;
+			// 
+			// label_navigation_stage3
+			// 
+			label_navigation_stage3.AutoSize = true;
+			label_navigation_stage3.Location = new Point(253, 16);
+			label_navigation_stage3.Name = "label_navigation_stage3";
+			label_navigation_stage3.Size = new Size(90, 15);
+			label_navigation_stage3.TabIndex = 12;
+			label_navigation_stage3.Text = "Select Packages";
+			label_navigation_stage3.Visible = false;
+			// 
+			// label_navigation_stage2
+			// 
+			label_navigation_stage2.AutoSize = true;
+			label_navigation_stage2.Location = new Point(84, 16);
+			label_navigation_stage2.Name = "label_navigation_stage2";
+			label_navigation_stage2.Size = new Size(139, 15);
+			label_navigation_stage2.TabIndex = 11;
+			label_navigation_stage2.Text = "Confirm Installation Path";
+			label_navigation_stage2.Visible = false;
+			// 
+			// label_navigation_stage1
+			// 
+			label_navigation_stage1.AutoSize = true;
+			label_navigation_stage1.Location = new Point(20, 16);
+			label_navigation_stage1.Name = "label_navigation_stage1";
+			label_navigation_stage1.Size = new Size(32, 15);
+			label_navigation_stage1.TabIndex = 10;
+			label_navigation_stage1.Text = "Intro";
+			label_navigation_stage1.Visible = false;
+			// 
 			// panel_stage5
 			// 
 			panel_stage5.BorderStyle = BorderStyle.FixedSingle;
@@ -437,20 +477,20 @@
 			// label_downloadStatusDesc
 			// 
 			label_downloadStatusDesc.AutoSize = true;
-			label_downloadStatusDesc.Location = new Point(282, 221);
+			label_downloadStatusDesc.Location = new Point(399, 221);
 			label_downloadStatusDesc.Name = "label_downloadStatusDesc";
-			label_downloadStatusDesc.Size = new Size(119, 15);
+			label_downloadStatusDesc.Size = new Size(126, 15);
 			label_downloadStatusDesc.TabIndex = 3;
-			label_downloadStatusDesc.Text = "Downloading A Car...";
+			label_downloadStatusDesc.Text = "PlaceholderModName";
 			// 
 			// label_downloadStatusTitle
 			// 
 			label_downloadStatusTitle.AutoSize = true;
-			label_downloadStatusTitle.Location = new Point(444, 221);
+			label_downloadStatusTitle.Location = new Point(270, 221);
 			label_downloadStatusTitle.Name = "label_downloadStatusTitle";
-			label_downloadStatusTitle.Size = new Size(99, 15);
+			label_downloadStatusTitle.Size = new Size(106, 15);
 			label_downloadStatusTitle.TabIndex = 2;
-			label_downloadStatusTitle.Text = "Download Status:";
+			label_downloadStatusTitle.Text = "[1/6] Downloading";
 			// 
 			// listBox_downloadList
 			// 
@@ -481,42 +521,6 @@
 			panel_stage4.Size = new Size(668, 260);
 			panel_stage4.TabIndex = 15;
 			panel_stage4.Visible = false;
-			// 
-			// label_navigation_stage1
-			// 
-			label_navigation_stage1.AutoSize = true;
-			label_navigation_stage1.Location = new Point(20, 16);
-			label_navigation_stage1.Name = "label_navigation_stage1";
-			label_navigation_stage1.Size = new Size(32, 15);
-			label_navigation_stage1.TabIndex = 10;
-			label_navigation_stage1.Text = "Intro";
-			// 
-			// label_navigation_stage2
-			// 
-			label_navigation_stage2.AutoSize = true;
-			label_navigation_stage2.Location = new Point(84, 16);
-			label_navigation_stage2.Name = "label_navigation_stage2";
-			label_navigation_stage2.Size = new Size(139, 15);
-			label_navigation_stage2.TabIndex = 11;
-			label_navigation_stage2.Text = "Confirm Installation Path";
-			// 
-			// label_navigation_stage3
-			// 
-			label_navigation_stage3.AutoSize = true;
-			label_navigation_stage3.Location = new Point(253, 16);
-			label_navigation_stage3.Name = "label_navigation_stage3";
-			label_navigation_stage3.Size = new Size(90, 15);
-			label_navigation_stage3.TabIndex = 12;
-			label_navigation_stage3.Text = "Select Packages";
-			// 
-			// label_navigation_stage4
-			// 
-			label_navigation_stage4.AutoSize = true;
-			label_navigation_stage4.Location = new Point(374, 18);
-			label_navigation_stage4.Name = "label_navigation_stage4";
-			label_navigation_stage4.Size = new Size(113, 15);
-			label_navigation_stage4.TabIndex = 13;
-			label_navigation_stage4.Text = "Download Packages";
 			// 
 			// Form1
 			// 

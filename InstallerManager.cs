@@ -22,10 +22,10 @@ namespace Crackdown_Installer
 		//if true, skips sending an http req for the json file,
 		//and reads a local json file instead.
 
-		private const bool DEBUG_NO_FILE_DOWNLOAD = true;
+		private const bool DEBUG_NO_FILE_DOWNLOAD = false;
 		//if true, doesn't download the file at all.
 
-		private const bool DEBUG_NO_FILE_INSTALL = true;
+		private const bool DEBUG_NO_FILE_INSTALL = false;
 		//if true, downloads the files but doesn't actually install any files to their final locations (so as not to interfere with existing installations)
 
 		private const bool DEBUG_NO_FILE_CLEANUP = false;
@@ -51,13 +51,14 @@ namespace Crackdown_Installer
 		private const string KEY_USER_ROOT = "HKEY_CURRENT_USER";
 		private const string KEY_VALVE_STEAM = "Software\\Valve\\Steam";
 
-		private const string STEAM_LIBRARY_MANIFEST_PATH = "%%STEAM%%/steamapps/libraryfolders.vdf";
+		private const string STEAM_LIBRARY_MANIFEST_PATH = "%%STEAM%%\\steamapps\\libraryfolders.vdf";
 
 		private const string PD2_APPID = "218620"; //Steam appid for PAYDAY 2
 
 		private string? steamInstallDirectory;
 		private string? pd2InstallDirectory;
-		private DirectoryInfo? tempDownloadsDirectory = null;
+
+		private DirectoryInfo tempDirectoryInfo;
 
 		private List<ModDependencyEntry> dependenciesFromServer = new();
 
@@ -80,9 +81,6 @@ namespace Crackdown_Installer
 			httpClientInstance = client;
 
 			// Registry.GetValue("\\HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\Shell\\Associations\\URLAssociations\\https\\UserChoice", "SteamPath", "");
-
-			tempDownloadsDirectory = Directory.CreateTempSubdirectory("crackdowninstaller_");
-			//Directory.Delete(tempDownloadsDirectory.FullName + "/", true);
 
 			pd2InstallDirectory = FindPd2InstallDirectory();
 			if (string.IsNullOrEmpty(pd2InstallDirectory))
@@ -554,9 +552,24 @@ namespace Crackdown_Installer
 			return GetXmlAttribute(collection, elementName) ?? fallback ?? string.Empty;
 		}
 
+		public void CreateTempDirectory() {
+			 tempDirectoryInfo = Directory.CreateTempSubdirectory("crackdowninstaller_");
+		}
+
+		public void DisposeTempDirectory()
+		{
+			if (!DEBUG_NO_FILE_CLEANUP)
+			{
+			
+				tempDirectoryInfo = Directory.CreateTempSubdirectory("crackdowninstaller_");
+				string tempDownloadsDirectory = tempDirectoryInfo.FullName;
+				Directory.Delete(tempDownloadsDirectory + "\\", true);
+				LogMessage("Downloads complete. Deleting " + tempDownloadsDirectory + ".");
+			}
+		}
 
 		public async Task<bool> DownloadDependency(ModDependencyEntry dependencyEntry) {
-			string downloadDir = tempDownloadsDirectory.FullName;
+			string downloadDir = tempDirectoryInfo.FullName + "\\";
 
 			string downloadUri = "";
 			string? installDir = null;
@@ -699,12 +712,9 @@ namespace Crackdown_Installer
 					{
 						Microsoft.VisualBasic.FileIO.FileSystem.MoveDirectory(modFolder, installFilePath, DOWNLOAD_CLOBBER_ENABLED);
 					}
-					if (!DEBUG_NO_FILE_CLEANUP)
-					{
-						LogMessage("Deleting " + downloadFilePath + "...");
-						System.IO.File.Delete(downloadFilePath);
-					}
 				}
+
+				System.IO.File.Delete(downloadFilePath); //delete tmp zip file
 
 				return true;
 			}
