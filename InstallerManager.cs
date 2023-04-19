@@ -114,11 +114,6 @@ namespace Crackdown_Installer
 		public async void CollectDependencies()
 		{
 			
-			ModDependencyEntry? RegisterNewDependency()
-			{
-				return null;
-			}
-			
 			List<ModDependencyEntry> result = new();
 			
 			try
@@ -695,7 +690,7 @@ namespace Crackdown_Installer
 					LogMessage(e.Message);
 				}
 				catch (Exception e) {
-					LogMessage("Unknown error occured while reading [" + definitionPath + "]:");
+					LogMessage("Unknown error occured while reading [" + definitionPath + "]:",e.Message);
 				}
 			}
 			return null;
@@ -747,7 +742,7 @@ namespace Crackdown_Installer
 			}
 		}
 
-		public async Task<bool> DownloadDependency(ModDependencyEntry dependencyEntry) {
+		public async Task<string?> DownloadDependency(ModDependencyEntry dependencyEntry) {
 			if (tempDirectoryInfo == null) {
 				throw new Exception("Error: No temp directory found! Could not download dependency.");
 			}
@@ -782,9 +777,11 @@ namespace Crackdown_Installer
 			else
 			{
 				//unknown install directory type!
-				return false;
+				LogMessage("Unknown installation type: [" + directoryType + "]");
+				return "Bad dependency data";
 			}
-			return await DownloadPackage(downloadDir, downloadUri, installDir);
+			string? errorMsg = await DownloadPackage(downloadDir, downloadUri, installDir);
+			return errorMsg;
 		}
 
 		/// <summary>
@@ -797,56 +794,106 @@ namespace Crackdown_Installer
 		/// <param name="siteUri"></param>
 		/// <param name="installFilePath"></param>
 		/// <returns></returns>
-		public async Task<bool> DownloadPackage(string downloadDir, string siteUri, string installFilePath)
+		public async Task<string?> DownloadPackage(string downloadDir, string siteUri, string installFilePath)
 		{
 			string downloadFileName = "tmp.zip";
 			string downloadFilePath = Path.Combine(downloadDir + downloadFileName);
 
+
+			//debug only: "skip" the actual download process
 			if (DEBUG_NO_FILE_DOWNLOAD)
 			{
 				LogMessage("DEBUG: Pretended to download and write " + siteUri + " to " + downloadFilePath + " and move to final location " + installFilePath + " but didn't actually. :)");
 
-				return true;
+				return null;
 			}
 
-#pragma warning disable CS0162 // Unreachable code detected
+			LogMessage("Downloading: " + siteUri + " to " + downloadDir + "...");
+
+			//send download req, output to Stream
+			Stream? s = null;
 			try
 			{
+				s = await httpClientInstance.GetStreamAsync(siteUri);
+			}
+			catch (Exception e) {
+				LogMessage("Download stream aborted due to an error:");
+				LogMessage(e.Message);
+				return "Could not get download stream";
+			}
+			finally {
+				s?.Close();
+			}
 
-				LogMessage("Downloading: " + siteUri + " to " + downloadDir + "...");
-
-				Stream s = await httpClientInstance.GetStreamAsync(siteUri);
-
-				FileStream fs = new(downloadFilePath, FileMode.OpenOrCreate);
+			FileStream? fs = null;
+			try
+			{
+				fs = new(downloadFilePath, FileMode.OpenOrCreate);
 
 				s.CopyTo(fs);
-
-				LogMessage("Unzipping " + downloadFilePath + " to " + downloadDir + "...");
-
-				ZipFile.ExtractToDirectory(downloadFilePath, downloadDir);
-
-				foreach (string modFolder in Directory.EnumerateDirectories(downloadDir, "*", System.IO.SearchOption.TopDirectoryOnly))
-				{
-
-					LogMessage("Moving " + modFolder + " to " + installFilePath + "...");
-					if (!DEBUG_NO_FILE_INSTALL)
-					{
-						Microsoft.VisualBasic.FileIO.FileSystem.MoveDirectory(modFolder, installFilePath, DOWNLOAD_CLOBBER_ENABLED);
-					}
-				}
-
-				System.IO.File.Delete(downloadFilePath); //delete tmp zip file
-
-				return true;
 			}
 			catch (Exception e)
 			{
-				LogMessage("Installation aborted due to an error: ");
-				LogMessage(e);
-				return false;
+				LogMessage("Download write aborted due to an error:");
+				LogMessage(e.Message);
+				return "Could not save file";
 			}
-#pragma warning restore CS0162 // Unreachable code detected
-			return false;
+			finally
+			{
+				//dispose resource
+				s?.Close();
+				fs?.Dispose();
+			}
+
+			LogMessage("Unzipping " + downloadFilePath + " to " + downloadDir + "...");
+
+			try
+			{
+				ZipFile.ExtractToDirectory(downloadFilePath, downloadDir);
+			}
+			catch (Exception e)
+			{
+				LogMessage("Extraction aborted due to an error:");
+				LogMessage(e.Message);
+				return "Could not unzip downloaded archive";
+			}
+
+			foreach (string modFolder in Directory.EnumerateDirectories(downloadDir, "*", System.IO.SearchOption.TopDirectoryOnly))
+			{
+
+				LogMessage("Moving " + modFolder + " to " + installFilePath + "...");
+				if (!DEBUG_NO_FILE_INSTALL)
+				{
+					try
+					{
+						//there should only be one individual file/folder per dependency package download
+						Microsoft.VisualBasic.FileIO.FileSystem.MoveDirectory(modFolder, installFilePath, DOWNLOAD_CLOBBER_ENABLED);
+						break;
+					}
+					catch (Exception e)
+					{
+						LogMessage("Installation aborted due to an error:");
+						LogMessage(e.Message);
+						return "Could not move downloaded package";
+					}
+				}
+				else
+				{
+					LogMessage("[debug] Pretended to move unzipped download into final installation location but didn't actually");
+				}
+			}
+
+			try {
+				System.IO.File.Delete(downloadFilePath); //delete tmp zip file
+			}
+			catch (Exception e)
+			{
+				LogMessage("Warning: unable to delete downloaded dependency archive file");
+				LogMessage(e.Message);
+			}
+
+			//success; do not return an error message
+			return null;
 		}
 
 		/// <summary>
@@ -951,6 +998,19 @@ namespace Crackdown_Installer
 			return useAlternateDll;
 		}
 
+		public class DependencyDownloadResult
+		{
+			public bool success;
+			public ModDependencyEntry entry;
+			public string message;
+			public DependencyDownloadResult(bool success,ModDependencyEntry entry,string message)
+			{
+				this.success = success;
+				this.entry = entry;
+				this.message = message;
+			}
+			
+		}
 
 		/// <summary>
 		/// Holds basic information about a mod, so that this data can be compared or checked later,

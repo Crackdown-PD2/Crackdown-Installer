@@ -36,7 +36,7 @@ namespace Crackdown_Installer
 		const string INSTALL_STATUS_TEXT = "[$STATUS$] $NAME$";
 		const string INSTALL_STATUS_PENDING = "Pending";
 		const string INSTALL_STATUS_DONE = "Done";
-		const string INSTALL_STATUS_FAILED = "Failed";
+		const string INSTALL_STATUS_FAILED = "Failed ($reason$)";
 
 		//constructor method
 		//
@@ -472,39 +472,61 @@ namespace Crackdown_Installer
 			button_prevStage.Enabled = false;
 			isDownloadDependenciesInProgress = true;
 			button_startDownload.Enabled = false;
-			InstallerWrapper.CreateTemporaryDirectory();
-			foreach (ModDependencyEntry dependencyEntry in selectedModsToInstall)
-			{
-				LogMessage(dependencyEntry.GetName());
-				bool success = await InstallerWrapper.DownloadDependency(dependencyEntry);
-				LogMessage("Success: " + success);
-			}
-			InstallerWrapper.DisposeTemporaryDirectory();
+
+			List<DependencyDownloadResult> downloadResults = await DownloadSelectedDependencies();
+
 			button_prevStage.Enabled = true;
 			isDownloadDependenciesInProgress = false;
 			button_startDownload.Enabled = true;
+			CallbackOnDownloadDependenciesComplete(downloadResults);
+		}
+		
+		private void CallbackOnDownloadDependenciesComplete(List<DependencyDownloadResult> downloadResults)
+		{
+			if (downloadResults.Count > 0) {
+				//
+			}
+			else
+			{
+				//yay downloads complete
+			}
+		}
 
-			//private bool isQueryDependenciesInProgress = false;
+		private async Task<List<DependencyDownloadResult>> DownloadSelectedDependencies()
+		{
+			List<DependencyDownloadResult> downloadResults = new();
+			InstallerWrapper.CreateTemporaryDirectory();
+			foreach (ModDependencyEntry dependencyEntry in selectedModsToInstall)
+			{
+				LogMessage("Downloading",dependencyEntry.GetName());
+				string? errorMsg = await InstallerWrapper.DownloadDependency(dependencyEntry);
+				if (!string.IsNullOrEmpty(errorMsg))
+				{
+					downloadResults.Add(new DependencyDownloadResult(false, dependencyEntry, INSTALL_STATUS_FAILED.Replace("$reason$",errorMsg)));
 
+					LogMessage("Download fail");
+				}
+				else
+				{
+					downloadResults.Add(new DependencyDownloadResult(true, dependencyEntry, INSTALL_STATUS_DONE));
+					LogMessage("Download success");
+				}
+			}
+			InstallerWrapper.DisposeTemporaryDirectory();
+
+			return downloadResults;
 		}
 
 		private void MoveToNextStage()
 		{
-			//			System.Diagnostics.Debug.WriteLine("+++");
-			//			System.Diagnostics.Debug.WriteLine(currentPage);
-			//			System.Diagnostics.Debug.WriteLine(panels.Count);
 			if (currentPage < panels.Count - 1)
 			{
 				button_prevStage.Enabled = true;
 
 				Panel currentPanel = panels[currentPage];
 				currentPanel.Hide();
-				//				System.Diagnostics.Debug.WriteLine("current page " + currentPage);
 				Panel nextPanel = panels[++currentPage];
-				//				System.Diagnostics.Debug.WriteLine("next page " + currentPage);
-				//				System.Diagnostics.Debug.WriteLine("hide " + currentPanel.Name);
 				nextPanel.Show();
-				//				System.Diagnostics.Debug.WriteLine("show " + nextPanel.Name);
 				if (currentPage == panels.Count - 1)
 				{
 					button_nextStage.Enabled = false;
@@ -514,22 +536,14 @@ namespace Crackdown_Installer
 
 		private void MoveToPrevStage()
 		{
-			//			System.Diagnostics.Debug.WriteLine("---");
-			//			System.Diagnostics.Debug.WriteLine(currentPage);
-			//			System.Diagnostics.Debug.WriteLine(panels.Count);
 			if (currentPage > 0)
 			{
 				button_nextStage.Enabled = true;
 				Panel currentPanel = panels[currentPage];
 
 				currentPanel.Hide();
-				//				System.Diagnostics.Debug.WriteLine("hide " + currentPanel.Name);
-
-				//				System.Diagnostics.Debug.WriteLine("current page " + currentPage);
 				Panel nextPanel = panels[--currentPage];
-				//				System.Diagnostics.Debug.WriteLine("next page " + currentPage);
 				nextPanel.Show();
-				//				System.Diagnostics.Debug.WriteLine("show " + nextPanel.Name);
 				if (currentPage == 0)
 				{
 					button_prevStage.Enabled = false;

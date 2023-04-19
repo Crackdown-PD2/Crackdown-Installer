@@ -30,7 +30,7 @@ namespace Crackdown_Installer
 			Application.Run(new Form1());
 		}
 
-		public static async Task<bool> DownloadDependency(ModDependencyEntry dependency)
+		public static async Task<string?> DownloadDependency(ModDependencyEntry dependency)
 		{
 			if (instMgr != null)
 			{
