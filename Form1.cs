@@ -7,6 +7,9 @@ using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using System.Reflection.Metadata.Ecma335;
 using System.Drawing.Text;
 using System.Security.Policy;
+using ZNix.SuperBLT;
+using System.IO;
+using System.CodeDom;
 
 namespace Crackdown_Installer
 {
@@ -18,35 +21,37 @@ namespace Crackdown_Installer
 		List<Panel> panels;
 		CheckedListBoxDisabledItems checkedListBox_missingDependencyItems;
 		CheckedListBoxDisabledItems checkedListBox_installedDependencyItems;
-		bool hasDonePopulateDependencies;
 
 		List<ModDependencyEntry> allModsToInstall = new();
 		List<ModDependencyEntry> selectedModsToInstall = new();
 
+		private bool isDownloadDependenciesInProgress = false;
+		private bool isQueryDependenciesInProgress = false;
+
 		//placeholders; should use the localization resource framework provided by microsoft
 		const string TOOLTIP_DEPENDENCY_NEEDS_UPDATE = "Older version detected; an update is available.";
-		const string DEPENDENCY_ALREADY_INSTALLED = "This mod has been installed and is up to date.";
-		const string TOOLTIP_DEPENDENCY_NEEDS_INSTALL = "This dependency has not yet been installed.";
-		const string INSTALL_STATUS_TEXT = "[$STATUS$] $NAME$";
 		const string TOOLTIP_DEPENDENCY_ALREADY_INSTALLED = "These are mods that you already have installed.";
+		const string TOOLTIP_DEPENDENCY_NEEDS_INSTALL = "This dependency has not yet been installed.";
+		const string DEPENDENCY_ALREADY_INSTALLED = "This mod has been installed and is up to date.";
+		const string INSTALL_STATUS_TEXT = "[$STATUS$] $NAME$";
 		const string INSTALL_STATUS_PENDING = "Pending";
 		const string INSTALL_STATUS_DONE = "Done";
 		const string INSTALL_STATUS_FAILED = "Failed";
 
+		//constructor method
+		//
 		public Form1()
 		{
 			InitializeComponent();
 
-			hasDonePopulateDependencies = false;
+			//set initial value for pd2 install path
+			string detectedDirectory = InstallerWrapper.GetPd2InstallPath();
+			richTextBox_pd2InstallPath.Text = detectedDirectory;
+			folderBrowserDialog1.InitialDirectory = detectedDirectory;
 
 			currentPage = 0;
 			button_prevStage.Enabled = false;
 			timesClickedTitle = 0;
-
-			string detectedDirectory = InstallerWrapper.instMgr.GetPd2InstallDirectory();
-			richTextBox1.Text = detectedDirectory;
-			folderBrowserDialog1.InitialDirectory = detectedDirectory;
-
 
 			panels = new List<Panel>();
 			panels.Add(panel_stage1);
@@ -55,10 +60,13 @@ namespace Crackdown_Installer
 			panels.Add(panel_stage4);
 			//		panels.Add(panelNavigation)
 
+			//register visibility change (aka on stage change) event callbacks
+			//panel_stage2.VisibleChanged += new EventHandler(this.panel_stage2_OnVisibleChanged);
 			panel_stage3.VisibleChanged += new EventHandler(this.panel_stage3_OnVisibleChanged);
 			panel_stage4.VisibleChanged += new EventHandler(this.panel_stage4_OnVisibleChanged);
 
-			//inherit selected properties from dummy
+			//inherit selected properties from dummy checkboxes
+			//since the visual editor obviously can't handle custom extended control classes
 			checkedListBox_missingDependencyItems = new()
 			{
 				CheckOnClick = checkedListBox_dummyMissingMods.CheckOnClick,
@@ -81,9 +89,242 @@ namespace Crackdown_Installer
 			};
 			panel_stage3.Controls.Add(checkedListBox_installedDependencyItems);
 
-			AddMouseoverToolTip(label_installedModsList, TOOLTIP_DEPENDENCY_ALREADY_INSTALLED);
-			AddMouseoverToolTip(label_missingModsList, TOOLTIP_DEPENDENCY_NEEDS_INSTALL);
+			//AddMouseoverToolTip(label_installedModsList, TOOLTIP_DEPENDENCY_ALREADY_INSTALLED);
+			//AddMouseoverToolTip(label_missingModsList, TOOLTIP_DEPENDENCY_NEEDS_INSTALL);
 		}
+
+
+		/// <summary>
+		/// 
+		/// </summary>
+		private void CheckExistingMods()
+		{
+
+			allModsToInstall.Clear();
+			checkedListBox_missingDependencyItems.Items.Clear();
+			checkedListBox_installedDependencyItems.Items.Clear();
+			InstallerWrapper.CollectExistingMods();
+
+			List<ModDependencyEntry> dependencyEntries = InstallerWrapper.GetModDependencyList();
+			//AddMouseoverToolTip(checkedListBox_installedDependencyItems, "These items are already installed and will be skipped.");
+			//AddMouseoverToolTip(checkedListBox_missingDependencyItems, "These items must be installed in order to use Crackdown.");
+
+			//remove any existing dependency options
+
+			foreach (ModDependencyEntry entry in dependencyEntries)
+			{
+
+				bool dependencyIsOptional = entry.IsOptional();
+				string dependencyName = entry.GetName();
+				string dependencyType = entry.GetDefinitionType();
+				string dependencyFileName = entry.GetFileName();
+				string dependencyDesc = entry.GetDescription();
+				string dependencyVersionType = entry.GetModVersionType();
+				string dependencyVersionId = entry.GetModVersionId();
+				string? dependencyHash = entry.GetHash();
+
+				bool dependencyExistingNeedsUpdate = false;
+				bool isDependencyInstalled = false;
+				bool ignoreThisDependency = false;
+				string? currentVersion = string.Empty;
+				string? currentHash = null;
+
+
+				if (!string.IsNullOrEmpty(dependencyName) && !string.IsNullOrEmpty(dependencyType))
+				{
+					
+					//most dependencies will be mods, which are typically folders
+					Pd2ModFolder? modFolder = null;
+					Pd2ModData? definitionFile = null;
+
+					//dependencyType only indicates which definition file we use to identify a dependency as being installed or not
+					//(searching for an exact name inside a given definition file)
+					if (dependencyType == "blt")
+					{
+						LogMessage("Looking for installed mod " + dependencyName);
+						modFolder = InstallerWrapper.GetBltMod(dependencyName);
+						isDependencyInstalled = modFolder != null;
+					}
+					else if (dependencyType == "beardlib")
+					{
+						modFolder = InstallerWrapper.GetBeardlibMod(dependencyName);
+						isDependencyInstalled = modFolder != null;
+
+					}
+					else if (dependencyType == "file")
+					{
+						//this indicates that the dependency is detected as being installed only by the presence of the file itself
+						//since users can generally rename mod folders without impacting the mod's functionality
+						//(unless the mod is poorly written and does not account for this, eg. by hard-coding the folder name)
+						//then this should really only be used for mods that are individual files,
+						//which we can then also hash to compare version names
+
+						string pd2InstallationPath = InstallerWrapper.GetPd2InstallPath();
+						string modPath = Path.Combine(pd2InstallationPath, dependencyFileName);
+
+						Pd2ModData? miscModData = InstallerWrapper.GetMiscMod(dependencyFileName);
+
+						if (miscModData != null)
+						{
+							isDependencyInstalled = true;
+							if (miscModData.GetName() == dependencyName)
+							{
+								isDependencyInstalled = true;
+								currentVersion = miscModData.GetVersion();
+							}
+							else
+							{
+								ignoreThisDependency = true;
+							}
+						}
+						else
+						{
+							isDependencyInstalled = false;
+						}
+					}
+					else
+					{
+						throw new Exception("Unknown dependency type: " + dependencyType);
+					}
+
+					if (dependencyVersionType == "hash")
+					{
+						//determine whether to hash directory or file
+
+						string pd2InstallationPath = InstallerWrapper.GetPd2InstallPath();
+						string modPath = Path.Combine(pd2InstallationPath, dependencyFileName);
+
+						bool isDirectory = true;
+
+						if (modFolder != null)
+						{
+							isDirectory = true;
+						}
+						else
+						{
+							if (!string.IsNullOrEmpty(dependencyFileName))
+							{
+								string lastChar = dependencyFileName.Substring(dependencyFileName.Length - 1);
+
+								isDirectory = lastChar == "\\" || lastChar == "/";
+							}
+						}
+						
+						if (isDirectory)
+						{
+							currentHash = Hasher.HashDirectory(modPath);
+						}
+						else
+						{
+							currentHash = Hasher.HashFile(modPath);
+						}
+
+						dependencyExistingNeedsUpdate = dependencyHash != currentHash;
+					}
+					else
+					{ //standard mod folder
+						if (dependencyVersionType == "xml")
+						{
+							if (modFolder != null)
+							{
+								definitionFile = modFolder.xmlModDefinition;
+							}
+						}
+						else if (dependencyVersionType == "json")
+						{
+							if (modFolder != null)
+							{
+								definitionFile = modFolder.jsonModDefinition;
+							}
+						}
+
+						if (definitionFile != null)
+						{
+							currentVersion = definitionFile.GetVersion();
+							dependencyExistingNeedsUpdate = currentVersion != dependencyVersionId;
+						}
+					}
+				}
+
+
+				if (!ignoreThisDependency)
+				{
+					if (isDependencyInstalled)
+					{
+						//add to installed list
+						int itemIndex = checkedListBox_installedDependencyItems.Items.Add(dependencyName, true);
+						if (itemIndex > -1)
+						{
+							//AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex);
+							AddMouseoverDescription(checkedListBox_installedDependencyItems, itemIndex, dependencyDesc, label_modDependenciesItemMouseverDescription);
+							checkedListBox_installedDependencyItems.CheckAndDisable(itemIndex);
+						}
+
+
+						//check manifest version against installed version
+						//if version mismatch, also add to missing list as an optional update
+						if (dependencyExistingNeedsUpdate)
+						{
+							int itemIndex2 = checkedListBox_missingDependencyItems.Items.Add(dependencyName, true);
+							if (itemIndex2 > -1)
+							{
+								AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex2, TOOLTIP_DEPENDENCY_NEEDS_UPDATE);
+								AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex, TOOLTIP_DEPENDENCY_NEEDS_UPDATE);
+
+								allModsToInstall.Add(entry);
+							}
+						}
+						else
+						{
+							AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex, DEPENDENCY_ALREADY_INSTALLED);
+						}
+					}
+					else
+					{
+						int itemIndex = checkedListBox_missingDependencyItems.Items.Add(dependencyName, true);
+						allModsToInstall.Add(entry);
+						if (itemIndex != -1)
+						{
+							AddMouseoverDescription(checkedListBox_missingDependencyItems, itemIndex, dependencyDesc, label_modDependenciesItemMouseverDescription);
+							//System.Diagnostics.Debug.WriteLine("Adding missing mod " + modName + " " + itemIndex);
+							AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex, TOOLTIP_DEPENDENCY_NEEDS_INSTALL);
+							if (!dependencyIsOptional)
+							{
+								checkedListBox_missingDependencyItems.CheckAndDisable(itemIndex);
+							}
+						}
+					}
+				}
+			}
+		}
+
+
+
+		private void CallbackDetectPd2InstallDirectory()
+		{
+		}
+
+		private void CallbackPopulateDependencyInstallList()
+		{
+			selectedModsToInstall.Clear();
+			foreach (int i in checkedListBox_missingDependencyItems.CheckedIndices)
+			{
+				ModDependencyEntry entry = allModsToInstall[i];
+				if (entry != null)
+				{
+					selectedModsToInstall.Add(entry);
+				}
+			}
+
+			listBox_downloadList.Items.Clear();
+			foreach (ModDependencyEntry m in selectedModsToInstall)
+			{
+				string statusText = INSTALL_STATUS_TEXT.Replace("$NAME$", m.GetName())
+						.Replace("$STATUS$", INSTALL_STATUS_PENDING);
+				int i = listBox_downloadList.Items.Add(statusText);
+			}
+		}
+
 
 		void SetDownloadProgressBar(System.Windows.Forms.ProgressBar p, int current, int total)
 		{
@@ -152,7 +393,7 @@ namespace Crackdown_Installer
 					pos = this.PointToClient(MousePosition);
 					toolTip1.Show(tooltipText, this, pos.X, pos.Y, TOOLTIP_HOVER_DURATION);
 					/*
-					System.Diagnostics.Debug.WriteLine("Mousing over index " + index);
+					LogMessage.WriteLine("Mousing over index " + index);
 					//string? s = null;
 					string? s = descriptions[index + 1];
 					if (s != null) { 
@@ -200,111 +441,9 @@ namespace Crackdown_Installer
 		/// <param name="e"></param>
 		private void panel_stage3_OnVisibleChanged(object? sender, EventArgs e)
 		{
-			if (panel_stage3.Visible && !hasDonePopulateDependencies)
+			if (panel_stage3.Visible)
 			{
-				InstallerWrapper.instMgr.CollectPd2Mods();
-
-				List<ModDependencyEntry> dependencyEntries = InstallerWrapper.instMgr.GetDependencyEntries();
-				checkedListBox_missingDependencyItems.Items.Clear();
-				//AddMouseoverToolTip(checkedListBox_installedDependencyItems, "These items are already installed and will be skipped.");
-				//AddMouseoverToolTip(checkedListBox_missingDependencyItems, "These items must be installed in order to use Crackdown.");
-
-				foreach (ModDependencyEntry entry in dependencyEntries)
-				{
-
-					bool isOptional = entry.Optional;
-					string modName = entry.Name;
-					string modType = entry.DirectoryType;
-					string modDesc = entry.Description;
-					string modVersionType = entry.ModVersionType;
-					string modVersionId = entry.ModVersionId;
-					bool isInstalled = false;
-					string? currentVersion = string.Empty;
-
-					//optional field for mods; not guaranteed to exist
-
-					if (!string.IsNullOrEmpty(modName) && !string.IsNullOrEmpty(modType))
-					{
-						Pd2ModFolder? modFolder = null;
-						Pd2ModData? definitionFile = null;
-						if (modType == "blt")
-						{
-							modFolder = InstallerWrapper.instMgr.GetInstalledBltMod(modName);
-						}
-						else if (modType == "beardlib")
-						{
-							modFolder = InstallerWrapper.instMgr.GetInstalledBeardlibMod(modName);
-						}
-
-						if (modFolder != null)
-						{
-							isInstalled = true;
-
-							if (modVersionType == "xml")
-							{
-
-								definitionFile = modFolder.xmlModDefinition;
-							}
-							else if (modVersionType == "json")
-							{
-								definitionFile = modFolder.jsonModDefinition;
-							}
-
-							if (definitionFile != null)
-							{
-								currentVersion = definitionFile.GetVersion();
-							}
-						}
-
-					}
-					if (isInstalled)
-					{
-						//add to installed list
-						int itemIndex = checkedListBox_installedDependencyItems.Items.Add(modName, true);
-						if (itemIndex > -1)
-						{
-							//AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex);
-							AddMouseoverDescription(checkedListBox_installedDependencyItems, itemIndex, modDesc, label_modDependenciesItemMouseverDescription);
-							checkedListBox_installedDependencyItems.CheckAndDisable(itemIndex);
-						}
-
-
-						//check manifest version against installed version
-						//if version mismatch, also add to missing list as an optional update
-						if (modVersionId != null && currentVersion != null && modVersionId != currentVersion)
-						{
-							int itemIndex2 = checkedListBox_missingDependencyItems.Items.Add(modName, true);
-							if (itemIndex2 > -1)
-							{
-								AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex2, TOOLTIP_DEPENDENCY_NEEDS_UPDATE);
-								AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex, TOOLTIP_DEPENDENCY_NEEDS_UPDATE);
-
-								allModsToInstall.Add(entry);
-							}
-						}
-						else
-						{
-							AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex, DEPENDENCY_ALREADY_INSTALLED);
-						}
-					}
-					else
-					{
-						int itemIndex = checkedListBox_missingDependencyItems.Items.Add(modName, true);
-						allModsToInstall.Add(entry);
-						if (itemIndex != -1)
-						{
-							AddMouseoverDescription(checkedListBox_missingDependencyItems, itemIndex, modDesc, label_modDependenciesItemMouseverDescription);
-							//System.Diagnostics.Debug.WriteLine("Adding missing mod " + modName + " " + itemIndex);
-							AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex, TOOLTIP_DEPENDENCY_NEEDS_INSTALL);
-							if (!isOptional)
-							{
-								checkedListBox_missingDependencyItems.CheckAndDisable(itemIndex);
-							}
-						}
-					}
-
-				}
-				hasDonePopulateDependencies = true;
+				CheckExistingMods();
 			}
 		}
 
@@ -317,23 +456,7 @@ namespace Crackdown_Installer
 		{
 			if (panel_stage4.Visible)
 			{
-				selectedModsToInstall.Clear();
-				foreach (int i in checkedListBox_missingDependencyItems.CheckedIndices)
-				{
-					ModDependencyEntry entry = allModsToInstall[i];
-					if (entry != null)
-					{
-						selectedModsToInstall.Add(entry);
-					}
-				}
-
-				listBox_downloadList.Items.Clear();
-				foreach (ModDependencyEntry m in selectedModsToInstall)
-				{
-					string statusText = INSTALL_STATUS_TEXT.Replace("$NAME$", m.Name)
-							.Replace("$STATUS$", INSTALL_STATUS_PENDING);
-					int i = listBox_downloadList.Items.Add(statusText);
-				}
+				CallbackPopulateDependencyInstallList();
 			}
 		}
 
@@ -346,75 +469,26 @@ namespace Crackdown_Installer
 		//start download button
 		private async void button_start_Click(object sender, EventArgs e)
 		{
+			button_prevStage.Enabled = false;
+			isDownloadDependenciesInProgress = true;
 			button_startDownload.Enabled = false;
-			InstallerWrapper.instMgr.CreateTempDirectory();
+			InstallerWrapper.CreateTemporaryDirectory();
 			foreach (ModDependencyEntry dependencyEntry in selectedModsToInstall)
 			{
-				System.Diagnostics.Debug.WriteLine(dependencyEntry.Name);
-				bool success = await InstallerWrapper.instMgr.DownloadDependency(dependencyEntry);
-				System.Diagnostics.Debug.WriteLine("Success: " + success);
+				LogMessage(dependencyEntry.GetName());
+				bool success = await InstallerWrapper.DownloadDependency(dependencyEntry);
+				LogMessage("Success: " + success);
 			}
-			InstallerWrapper.instMgr.DisposeTempDirectory();
+			InstallerWrapper.DisposeTemporaryDirectory();
+			button_prevStage.Enabled = true;
+			isDownloadDependenciesInProgress = false;
 			button_startDownload.Enabled = true;
-		}
 
-		private void folderBrowserDialog1_HelpRequest(object sender, EventArgs e)
-		{
+			//private bool isQueryDependenciesInProgress = false;
 
 		}
 
-		private void richTextBox1_TextChanged(object sender, EventArgs e)
-		{
-
-		}
-
-		private void linkLabelDiscord_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-		{
-			try
-			{
-				System.Diagnostics.Process.Start("https://discord.gg/dak2zQ2");
-			}
-			catch (System.ComponentModel.Win32Exception ex)
-			{
-				System.Diagnostics.Debug.WriteLine(ex.Message);
-			}
-		}
-
-		private void linkLabelHomepage_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-		{
-			try
-			{
-				System.Diagnostics.Process.Start("http://crackdownmod.com/");
-			}
-			catch (System.ComponentModel.Win32Exception ex)
-			{
-				System.Diagnostics.Debug.WriteLine(ex.Message);
-			}
-		}
-
-		private void linkLabelWiki_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-		{
-			try
-			{
-				System.Diagnostics.Process.Start("https://totalcrackdown.wiki.gg/");
-			}
-			catch (System.ComponentModel.Win32Exception ex)
-			{
-				System.Diagnostics.Debug.WriteLine(ex.Message);
-			}
-		}
-
-		private void Form1_Load(object sender, EventArgs e)
-		{
-
-		}
-
-		private void button_browsePath_Click(object sender, EventArgs e)
-		{
-			DialogResult result = folderBrowserDialog1.ShowDialog();
-		}
-
-		private void button_nextStage_Click(object sender, EventArgs e)
+		private void MoveToNextStage()
 		{
 			//			System.Diagnostics.Debug.WriteLine("+++");
 			//			System.Diagnostics.Debug.WriteLine(currentPage);
@@ -438,9 +512,8 @@ namespace Crackdown_Installer
 			}
 		}
 
-		private void button_prevStage_Click(object sender, EventArgs e)
+		private void MoveToPrevStage()
 		{
-
 			//			System.Diagnostics.Debug.WriteLine("---");
 			//			System.Diagnostics.Debug.WriteLine(currentPage);
 			//			System.Diagnostics.Debug.WriteLine(panels.Count);
@@ -464,6 +537,69 @@ namespace Crackdown_Installer
 			}
 		}
 
+		private void folderBrowserDialog1_HelpRequest(object sender, EventArgs e)
+		{
+
+		}
+
+		private void richTextBox1_TextChanged(object sender, EventArgs e)
+		{}
+
+		private void linkLabelDiscord_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+		{
+			try
+			{
+				System.Diagnostics.Process.Start("https://discord.gg/dak2zQ2");
+			}
+			catch (System.ComponentModel.Win32Exception ex)
+			{
+				LogMessage(ex.Message);
+			}
+		}
+
+		private void linkLabelHomepage_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+		{
+			try
+			{
+				System.Diagnostics.Process.Start("http://crackdownmod.com/");
+			}
+			catch (System.ComponentModel.Win32Exception ex)
+			{
+				LogMessage(ex.Message);
+			}
+		}
+
+		private void linkLabelWiki_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+		{
+			try
+			{
+				System.Diagnostics.Process.Start("https://totalcrackdown.wiki.gg/");
+			}
+			catch (System.ComponentModel.Win32Exception ex)
+			{
+				LogMessage(ex.Message);
+			}
+		}
+
+		private void Form1_Load(object sender, EventArgs e)
+		{
+
+		}
+
+		private void button_browsePath_Click(object sender, EventArgs e)
+		{
+			DialogResult result = folderBrowserDialog1.ShowDialog();
+		}
+
+		private void button_nextStage_Click(object sender, EventArgs e) {
+			MoveToNextStage();
+		}
+
+		private void button_prevStage_Click(object sender, EventArgs e)
+		{
+			MoveToPrevStage();
+		}
+
 		private void panel4_Paint(object sender, PaintEventArgs e)
 		{
 
@@ -476,28 +612,31 @@ namespace Crackdown_Installer
 
 		private void button_detectExistingMods_Click(object sender, EventArgs e)
 		{
-
+			if (!isQueryDependenciesInProgress)
+			{
+				CheckExistingMods();
+			}
 		}
 
 		private void button_browseInstallPath_Click(object sender, EventArgs e)
 		{
 			if (folderBrowserDialog1.ShowDialog() == DialogResult.OK)
 			{
-				richTextBox1.Text = folderBrowserDialog1.SelectedPath;
+				richTextBox_pd2InstallPath.Text = folderBrowserDialog1.SelectedPath;
 			}
 		}
 
 		private void button_resetInstallPath_Click(object sender, EventArgs e)
 		{
 			folderBrowserDialog1.SelectedPath = folderBrowserDialog1.InitialDirectory;
-			richTextBox1.Text = folderBrowserDialog1.InitialDirectory;
+			richTextBox_pd2InstallPath.Text = folderBrowserDialog1.InitialDirectory;
 		}
 
 		private void label_stage1Title_Click(object sender, EventArgs e)
 		{
 			if (++timesClickedTitle > 4)
 			{
-				System.Diagnostics.Debug.WriteLine("Stop clicking him, he's already dead!");
+				LogMessage("Stop clicking him, he's already dead!");
 			}
 		}
 

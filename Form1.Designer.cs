@@ -40,7 +40,7 @@
 			label_stage1Title = new Label();
 			button_quit = new Button();
 			folderBrowserDialog1 = new FolderBrowserDialog();
-			richTextBox1 = new RichTextBox();
+			richTextBox_pd2InstallPath = new RichTextBox();
 			panel_stage2 = new Panel();
 			label_stage2Title = new Label();
 			label_browseInstallPathDesc = new Label();
@@ -196,22 +196,22 @@
 			folderBrowserDialog1.ShowNewFolderButton = false;
 			folderBrowserDialog1.HelpRequest += folderBrowserDialog1_HelpRequest;
 			// 
-			// richTextBox1
+			// richTextBox_pd2InstallPath
 			// 
-			richTextBox1.AccessibleDescription = "The path to your PAYDAY 2 installation.";
-			richTextBox1.AccessibleName = "PAYDAY 2 folder path";
-			richTextBox1.DetectUrls = false;
-			richTextBox1.HideSelection = false;
-			richTextBox1.Location = new Point(16, 30);
-			richTextBox1.Multiline = false;
-			richTextBox1.Name = "richTextBox1";
-			richTextBox1.ReadOnly = true;
-			richTextBox1.ScrollBars = RichTextBoxScrollBars.Horizontal;
-			richTextBox1.Size = new Size(298, 30);
-			richTextBox1.TabIndex = 4;
-			richTextBox1.Text = "";
-			richTextBox1.WordWrap = false;
-			richTextBox1.TextChanged += richTextBox1_TextChanged;
+			richTextBox_pd2InstallPath.AccessibleDescription = "The path to your PAYDAY 2 installation.";
+			richTextBox_pd2InstallPath.AccessibleName = "PAYDAY 2 folder path";
+			richTextBox_pd2InstallPath.DetectUrls = false;
+			richTextBox_pd2InstallPath.HideSelection = false;
+			richTextBox_pd2InstallPath.Location = new Point(16, 30);
+			richTextBox_pd2InstallPath.Multiline = false;
+			richTextBox_pd2InstallPath.Name = "richTextBox_pd2InstallPath";
+			richTextBox_pd2InstallPath.ReadOnly = true;
+			richTextBox_pd2InstallPath.ScrollBars = RichTextBoxScrollBars.Horizontal;
+			richTextBox_pd2InstallPath.Size = new Size(298, 30);
+			richTextBox_pd2InstallPath.TabIndex = 4;
+			richTextBox_pd2InstallPath.Text = "";
+			richTextBox_pd2InstallPath.WordWrap = false;
+			richTextBox_pd2InstallPath.TextChanged += richTextBox1_TextChanged;
 			// 
 			// panel_stage2
 			// 
@@ -221,7 +221,7 @@
 			panel_stage2.Controls.Add(label_browseInstallPathDesc);
 			panel_stage2.Controls.Add(button_browseInstallPath);
 			panel_stage2.Controls.Add(button_resetInstallPath);
-			panel_stage2.Controls.Add(richTextBox1);
+			panel_stage2.Controls.Add(richTextBox_pd2InstallPath);
 			panel_stage2.Location = new Point(734, 12);
 			panel_stage2.Name = "panel_stage2";
 			panel_stage2.Size = new Size(479, 154);
@@ -564,7 +564,7 @@
 		private Button button_quit;
 		private Button button_start;
 		private FolderBrowserDialog folderBrowserDialog1;
-		private RichTextBox richTextBox1;
+		private RichTextBox richTextBox_pd2InstallPath;
 		private Panel panel_stage2;
 		private Panel panel_stage3;
 		private LinkLabel linkLabelWiki;

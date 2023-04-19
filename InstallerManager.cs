@@ -1,6 +1,9 @@
-﻿using System.IO.Compression;
+﻿using System;
+using System.Drawing.Text;
+using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
+using System.Security.Policy;
 using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
@@ -9,7 +12,11 @@ using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.FileIO;
 using Microsoft.Win32;
 //using ZNix.SuperBLT;
-using VDF;
+using VDF; //Valve Data Format parser 
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TreeView;
+
+//Stores result data from installation file operations
+//such as finding/hashing installed mods, querying required dependencies from the server
 
 namespace Crackdown_Installer
 {
@@ -22,7 +29,7 @@ namespace Crackdown_Installer
 		//if true, skips sending an http req for the json file,
 		//and reads a local json file instead.
 
-		private const bool DEBUG_NO_FILE_DOWNLOAD = false;
+		private const bool DEBUG_NO_FILE_DOWNLOAD = true;
 		//if true, doesn't download the file at all.
 
 		private const bool DEBUG_NO_FILE_INSTALL = false;
@@ -35,15 +42,19 @@ namespace Crackdown_Installer
 		private const int CURRENT_INSTALLER_VERSION = 2;
 		private const string DEPENDENCIES_JSON_URL = "https://raw.githubusercontent.com/Crackdown-PD2/deathvox/autoupdate/cd_dependencies.json";
 		private const string SUPERBLT_DLL_WSOCK32_URL = "https://sblt-update.znix.xyz/pd2update/updates/meta.php?id=payday2bltwsockdll"; //holds meta json info about dll updates
+		private const string SUPERBLT_DLL_IPHLPAPI_URL = "https://sblt-update.znix.xyz/pd2update/updates/meta.php?id=payday2bltdll"; //holds meta json info about dll updates
 		private const string DLL_DIFFERENCE_INFO_URL = "https://superblt.znix.xyz/#regarding-the-iphlpapidll-vs-wsock32dll-situation"; //a page for humans to read with their eyeballs, about differences between iphlpapi and wsock32 dlls
 
 		private const string PROVIDER_GITHUB_COMMIT_URL = "https://api.github.com/repos/$id$/commits/$branch$";
 		private const string PROVIDER_GITHUB_RELEASE_URL = "https://api.github.com/repos/$id$/releases/latest";
 		private const string PROVIDER_GITHUB_DIRECT_URL = "https://github.com/$id$/archive/$branch$.zip";
 
-		//private const string PROVIDER_GITLAB_COMMIT_URL = "https://gitlab.com/api/v4/projects/$id$/repository/branches/$branch$";
-		private const string PROVIDER_GITLAB_RELEASE_URL = "https://gitlab.com/api/v4/projects/$id$/releases";
-		private const string PROVIDER_GITLAB_DIRECT_URL = "https://gitlab.com/api/v4/projects/$id$/repository/archive.zip";
+		//private const string PROVIDER_GITLAB_COMMIT_URL = "https://gitlab.com/api/v4/projects/$id$/repository/branches/$branch$"; //meta json info about latest commit in branch
+		private const string PROVIDER_GITLAB_RELEASE_URL = "https://gitlab.com/api/v4/projects/$id$/releases"; //direct latest release download
+		private const string PROVIDER_GITLAB_DIRECT_URL = "https://gitlab.com/api/v4/projects/$id$/repository/archive.zip"; //direct latest commit download 
+
+		private const string SUPERBLT_DLL_NAME_MAIN = "WSOCK32.dll";
+		private const string SUPERBLT_DLL_NAME_ALTERNATE = "IPHLPAPI.dll";
 
 		private const string JSON_MOD_DEFINITION_NAME = "mod.txt";
 		private const string XML_MOD_DEFINITION_NAME = "main.xml";
@@ -58,13 +69,17 @@ namespace Crackdown_Installer
 		private string? steamInstallDirectory;
 		private string? pd2InstallDirectory;
 
-		private DirectoryInfo tempDirectoryInfo;
+		private bool useAlternateDll = false;
+
+		private DirectoryInfo? tempDirectoryInfo;
 
 		private List<ModDependencyEntry> dependenciesFromServer = new();
 
 		private HttpClient httpClientInstance;
 
-		public List<Pd2ModFolder> installedPd2Mods = new();
+		public List<Pd2ModFolder> installedPd2Mods = new(); //holds information about any mod folders which are placed in both standard install locations (mods, mod_overrides)
+
+		public List<Pd2ModData> installedMiscPd2Mods = new(); //holds loose files that are not stored in standard mod folder format, ie modloader dll
 
 		private JsonDocumentOptions DEFAULT_JSON_OPTIONS = new()
 		{
@@ -92,19 +107,100 @@ namespace Crackdown_Installer
 			CollectDependencies();
 		}
 
+		/// <summary>
+		/// Query update server for manifest of dependencies needed for CD, and parse the response. Also perform secondary query if necessary.
+		/// Save the resulting list to memory.
+		/// </summary>
 		public async void CollectDependencies()
 		{
+			
+			ModDependencyEntry? RegisterNewDependency()
+			{
+				return null;
+			}
+			
 			List<ModDependencyEntry> result = new();
+			
+			try
+			{
+
+				//superblt modloader has two components: a basemod folder containing lua scripts,
+				//and a dll file.
+				//Both are required.
+				//the dll file can be a WSOCK32.dll (Windows Sockets API) or IPHLPAPI.dll (Windows IP Helper API)
+				//but only ONE should be used- not both! 
+
+				ModDependencyEntry dllDependency;
+
+				string dllName;
+				string hash;
+				string provider = "znix";
+				string desc = "The DLL file required for the SuperBLT modloader to function.";
+				string dllDirectoryType = "file";
+				string uri;
+				string branch = ""; //not applicable
+				string versionType = "hash";
+				string versionId;
+				string downloadUrl;
+
+
+				if (useAlternateDll)
+				{
+					dllName = SUPERBLT_DLL_NAME_ALTERNATE;
+					uri = SUPERBLT_DLL_IPHLPAPI_URL;
+				}
+				else
+				{
+					dllName = SUPERBLT_DLL_NAME_MAIN;
+					uri = SUPERBLT_DLL_WSOCK32_URL;
+				}
+
+				string queryUrl = uri;
+
+				string jsonData = await AsyncJsonReq(queryUrl);
+				JsonDocument releaseData = JsonDocument.Parse(jsonData, DEFAULT_JSON_OPTIONS);
+				JsonElement secondaryRootElement = releaseData.RootElement[0];
+				//since we have no way of easily checking the version number of the local dll,
+				//we will always use comparing hashes instead, when it comes to updates for the dll specifically
+				versionId = GetJsonAttribute("version", secondaryRootElement);
+				//if (versionType == "hash" && string.IsNullOrEmpty(hash)) {
+					hash = GetJsonAttribute("hash", secondaryRootElement);
+				//}
+
+				downloadUrl = GetJsonAttribute("download_url", secondaryRootElement);
+
+				//string patchNotesUrl = GetJsonAttribute("patchnotes_url", secondaryRootElement);
+
+				dllDependency = new(
+					dllName,
+					desc,
+					dllDirectoryType,
+					dllName,
+					provider,
+					hash,
+					uri,
+					branch,
+					false, //release is not applicable
+					versionType,
+					versionId,
+					false, //not optional
+					downloadUrl
+				);
+
+				result.Add(dllDependency);
+			}
+			catch (Exception e)
+			{
+				LogMessage("Error getting update data for SuperBLT dll file",e);
+			}
+
+
 			ModDependencyList item;
 			if (DEBUG_LOCAL_JSON_HTTPREQ)
-			{
 #pragma warning disable CS0162 // Unreachable code detected
+			{
 				StreamReader sr = new("test.json");
-#pragma warning restore CS0162 // Unreachable code detected
 				string jsonResponse = sr.ReadToEnd();
-				//				item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
-//				LogMessage(jsonResponse);
-
 				//create a throwaway temp element to hold the result of TryGetProperty()
 				JsonElement tempElement = new();
 
@@ -117,7 +213,7 @@ namespace Crackdown_Installer
 					if (rootElement.TryGetProperty("ApiVersion", out tempElement)) {
 						documentVersion = tempElement.GetInt32();
 						if (documentVersion == CURRENT_INSTALLER_VERSION) {
-							
+							//up to date installer version yay
 						}
 						else {
 							if (rootElement.TryGetProperty("MinApiVersion", out tempElement)) {
@@ -140,43 +236,116 @@ namespace Crackdown_Installer
 						for (int i = 0;i<tempElement.GetArrayLength();i++){
 							JsonElement dependencyItem = tempElement[i];
 							JsonElement tempElement2 = new();
-							string dependencyName = GetJsonAttribute("Name", dependencyItem,tempElement2);
-							string dependencyDescription = GetJsonAttribute("Description", dependencyItem, tempElement2);
-							string dependencyVersionType = GetJsonAttribute("VersionType", dependencyItem, tempElement2);
-							string dependencyVersionId = GetJsonAttribute("VersionId", dependencyItem, tempElement2);
-							string dependencyDirectoryType = GetJsonAttribute("DirectoryType", dependencyItem, tempElement2);
-							string dependencyDirectoryName = GetJsonAttribute("DirectoryName", dependencyItem, tempElement2);
-							string dependencyUri = GetJsonAttribute("Uri", dependencyItem, tempElement2);
-							string dependencyProvider = GetJsonAttribute("Provider", dependencyItem, tempElement2);
-							string dependencyBranch = GetJsonAttribute("Branch", dependencyItem, tempElement2);
-							bool dependencyIsOptional;
-							bool dependencyIsRelease;
+							string name = GetJsonAttribute("Name", dependencyItem,tempElement2);
+							string desc = GetJsonAttribute("Description", dependencyItem, tempElement2);
+							string versionType = GetJsonAttribute("VersionType", dependencyItem, tempElement2);
+							string versionId = GetJsonAttribute("VersionId", dependencyItem, tempElement2);
+							string definitionType = GetJsonAttribute("DefinitionType", dependencyItem, tempElement2);
+							string directoryName = GetJsonAttribute("DirectoryName", dependencyItem, tempElement2); //output folder/file name
+							string hash = GetJsonAttribute("Hash", dependencyItem, tempElement2);
+
+							string uri = GetJsonAttribute("Uri", dependencyItem, tempElement2);				//primary uri field; can be repo id or direct url, depending on provider
+							string provider = GetJsonAttribute("Provider", dependencyItem, tempElement2);	//secondary uri field
+							string branch = GetJsonAttribute("Branch", dependencyItem, tempElement2);       //trinary uri field; mainly used with github/gitlab repos
+
+							bool isOptional;
+							bool isRelease;
 							if (dependencyItem.TryGetProperty("Release", out tempElement2))
 							{
-								dependencyIsRelease = tempElement2.GetBoolean();
+								isRelease = tempElement2.GetBoolean();
 							}
 							else {
-								dependencyIsRelease = false;
+								isRelease = false;
 							}
 							if (dependencyItem.TryGetProperty("Optional", out tempElement2))
 							{
-								dependencyIsOptional = tempElement2.GetBoolean();
+								isOptional = tempElement2.GetBoolean();
 							}
 							else {
-								dependencyIsOptional = false;
+								isOptional = false;
 							}
+
+							//get url to query for later file download:
+							//the end result direct download link will vary according to dependency and provider,
+							//so in some cases, we need to make another httpreq to the specific provider to get the url
+							//this is the direct download link that the installer will use to download the archive of the dependency
+							string downloadUrl = string.Empty;
+
+							if (provider == "github")
+							{
+								string queryUrl;
+								if (isRelease)
+								{
+									queryUrl = PROVIDER_GITHUB_RELEASE_URL.Replace("$id$", uri);
+									try
+									{
+										string jsonData = await AsyncJsonReq(queryUrl);
+
+										JsonDocument releaseData = JsonDocument.Parse(jsonData, DEFAULT_JSON_OPTIONS);
+										JsonElement secondaryRootElement = releaseData.RootElement;
+										downloadUrl = GetJsonAttribute("zipball_url", secondaryRootElement);
+									}
+									catch (Exception e)
+									{
+										LogMessage("Failed getting url from github provider, package " + name,e);
+									}
+								}
+								else
+								{
+									downloadUrl = PROVIDER_GITHUB_DIRECT_URL.Replace("$id$", uri)
+										.Replace("$branch$", branch);
+									//queryUrl = PROVIDER_GITHUB_COMMIT_URL.Replace("$id$", uri)
+									//	.Replace("$branch$", branch);
+								}
+							}
+							else if (provider == "gitlab")
+							{
+								if (isRelease)
+								{
+									//downloadUri = PROVIDER_GITLAB_COMMIT_URL;
+									//not currently supported
+									throw new Exception("Gitlab releases are not currently supported! Package name " + name);
+								}
+								else
+								{
+									downloadUrl = PROVIDER_GITLAB_RELEASE_URL.Replace("$id$", uri);
+								}
+							}
+							else if (provider == "direct")
+							{
+								downloadUrl = uri;
+							}
+							else if (provider == "znix")
+							{
+								//not used; dll meta is parsed separately as a special case earlier in this function
+
+
+							}
+							else if (provider == "modworkshop")
+							{
+								throw new Exception("ModWorkshop releases are not currently supported! Package name " + name);
+								//not yet supported
+							}
+							else
+							{
+								//unknown provider type
+								throw new Exception("Unknown provider type! Package name " + name);
+							}
+
 							ModDependencyEntry dependencyEntry = new ModDependencyEntry(
-								dependencyName,
-								dependencyDescription,
-								dependencyDirectoryType,
-								dependencyDirectoryName.Replace("/", "\\"),
-								dependencyProvider,
-								dependencyUri,
-								dependencyBranch,
-								dependencyIsRelease,
-								dependencyVersionType,
-								dependencyVersionId,
-								dependencyIsOptional
+								name,
+								desc,
+								definitionType,
+								directoryName.Replace("/", "\\"),
+								provider,
+								hash,
+								uri,
+								branch,
+								isRelease,
+								versionType,
+								versionId,
+								isOptional,
+								downloadUrl
 								);
 
 							result.Add(dependencyEntry);
@@ -214,61 +383,24 @@ namespace Crackdown_Installer
 			dependenciesFromServer = result;
 		}
 
+		/// <summary>
+		/// Returns cached dependency entries
+		/// </summary>
+		/// <returns></returns>
 		public List<ModDependencyEntry> GetDependencyEntries() {
 			return dependenciesFromServer;
 		}
-
-		public List<ModDependencyEntry> CollectMissingMods() {
-			List<ModDependencyEntry> missingMods = new();
-			List<ModDependencyEntry> dependencyList = GetDependencyEntries();
-
-			foreach (ModDependencyEntry entry in dependencyList)
+		
+		/// <summary>
+		/// Query dependencies, save them to the cached member, and return the resulting list
+		/// </summary>
+		/// <returns></returns>
+		public List<ModDependencyEntry> GetDependencyEntries(bool forceReevaluate) {
+			if (forceReevaluate)
 			{
-				string? dependencyName = entry.Name;
-				string? dependencyVersionType = entry.ModVersionType;
-				string? dependencyVersionId = entry.ModVersionId;
-				if (!string.IsNullOrEmpty(dependencyName) && !string.IsNullOrEmpty(dependencyVersionType))
-				{
-					if (dependencyVersionType == "xml")
-					{
-						foreach (Pd2ModFolder thisPd2ModFolder in installedPd2Mods)
-						{
-							Pd2ModData? xmlData = thisPd2ModFolder.xmlModDefinition;
-							if (xmlData != null)
-							{
-								if (xmlData.GetName() == dependencyName)
-								{
-									string modVersion = xmlData.GetVersion();
-									if (modVersion != dependencyVersionId)
-									{
-										missingMods.Add(entry);
-									}
-								}
-							}
-						}
-					}
-					else if (dependencyVersionType == "json")
-					{
-						foreach (Pd2ModFolder thisPd2ModFolder in installedPd2Mods)
-						{
-							Pd2ModData? jsonData = thisPd2ModFolder.jsonModDefinition;
-							if (jsonData != null)
-							{
-								if (jsonData.GetName() == dependencyName)
-								{
-									string modVersion = jsonData.GetVersion();
-									if (modVersion != dependencyVersionId)
-									{
-										missingMods.Add(entry);
-									}
-								}
-							}
-						}
-					}
-				}
+				CollectDependencies();
 			}
-
-			return missingMods;
+			return GetDependencyEntries();
 		}
 
 		/// <summary>
@@ -352,7 +484,8 @@ namespace Crackdown_Installer
 		/// <param name="propertyName"></param>
 		/// <param name="element"></param>
 		/// <returns></returns>
-		private string GetJsonAttribute(string propertyName, JsonElement element) {
+		private string GetJsonAttribute(string propertyName, JsonElement element)
+		{
 			JsonElement tempElementHolder = new JsonElement();
 			return GetJsonAttribute(propertyName, element, tempElementHolder);
 		}
@@ -366,14 +499,16 @@ namespace Crackdown_Installer
 		/// <param name="element"></param>
 		/// <param name="tempElementHolder"></param>
 		/// <returns></returns>
-		private string GetJsonAttribute(string propertyName, JsonElement element, JsonElement tempElementHolder) {
+		private string GetJsonAttribute(string propertyName, JsonElement element, JsonElement tempElementHolder)
+		{
 			if (element.TryGetProperty(propertyName, out tempElementHolder)) {
 				return tempElementHolder.GetString() ?? string.Empty;
 			};
 			return string.Empty;
 		}
 
-		public Pd2ModFolder? GetInstalledBltMod(string name) {
+		public Pd2ModFolder? GetInstalledBltMod(string name)
+		{
 			foreach (Pd2ModFolder modFolder in installedPd2Mods) {
 				Pd2ModData? pd2ModData = modFolder.jsonModDefinition;
 				if (pd2ModData != null) {
@@ -384,7 +519,9 @@ namespace Crackdown_Installer
 			}
 			return null;
 		}
-		public bool HasBltModInstalled(string name) {
+
+		public bool HasBltModInstalled(string name)
+		{
 			foreach (Pd2ModFolder modFolder in installedPd2Mods) {
 				Pd2ModData? pd2ModData = modFolder.jsonModDefinition;
 				if (pd2ModData != null)
@@ -396,7 +533,8 @@ namespace Crackdown_Installer
 			}
 			return false;
 		}
-		public Pd2ModFolder? GetInstalledBeardlibMod(string name) {
+		public Pd2ModFolder? GetInstalledBeardlibMod(string name)
+		{
 			foreach (Pd2ModFolder modFolder in installedPd2Mods) {
 				Pd2ModData? pd2ModData = modFolder.xmlModDefinition;
 				if (pd2ModData != null) {
@@ -407,7 +545,8 @@ namespace Crackdown_Installer
 			}
 			return null;
 		}
-		public bool HasBeardlibModInstalled(string name) {
+		public bool HasBeardlibModInstalled(string name)
+		{
 			foreach (Pd2ModFolder modFolder in installedPd2Mods) {
 				Pd2ModData? pd2ModData = modFolder.xmlModDefinition;
 				if (pd2ModData != null) {
@@ -418,6 +557,29 @@ namespace Crackdown_Installer
 			}
 			return false;
 		}
+
+		
+		public bool HasMiscModInstalled(string name)
+		{
+			foreach (Pd2ModData mod in installedMiscPd2Mods) {
+				if (mod.GetName() == name)
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+		public Pd2ModData? GetInstalledMiscMod(string name)
+		{
+			foreach (Pd2ModData mod in installedMiscPd2Mods) {
+				if (mod.GetName() == name)
+				{
+					return mod;
+				}
+			}
+			return null;
+		}
+
 
 		/// <summary>
 		/// Given the path to a folder,
@@ -433,7 +595,8 @@ namespace Crackdown_Installer
 				StreamReader? sr = null;
 				try
 				{
-					//don't serialize since we have to be much more careful when parsing unknown files;
+					//don't serialize since we have to be much more careful when parsing files that are subject to change
+					//(eg if the manifest ever gets an update that changes its schema)
 					//blt's json parser is very lax, especially when it comes to missing commas
 
 					JsonElement tempElement = new();
@@ -450,19 +613,28 @@ namespace Crackdown_Installer
 					sr.Close();
 					return new Pd2ModData(modName, modDescription, modVersion, modType, modPath);
 				}
-
+				catch (IOException e)
+				{
+					LogMessage("The file [" + definitionPath + "] could not be opened or read:");
+					LogMessage(e.Message);
+				}
 				catch (JsonException e)
 				{
+					LogMessage("One or more JSON errors was encountered while reading [" + definitionPath + "]:");
 					LogMessage(e.Message);
 				}
 				catch (Exception e)
 				{
+					LogMessage("Unknown error occured while reading [" + definitionPath + "]:");
 					LogMessage(e.Message);
 				}
-
-				if (sr != null) {
-					sr.Close();
+				finally {
+					if (sr != null)
+					{
+						sr.Close();
+					}
 				}
+
 
 			}
 			return null;
@@ -515,8 +687,15 @@ namespace Crackdown_Installer
 				}
 				catch (IOException e)
 				{
-					Console.WriteLine("The file could not be read:");
-					Console.WriteLine(e.Message);
+					LogMessage("The file [" + definitionPath + "] could not be opened or read:");
+					LogMessage(e.Message);
+				}
+				catch (XmlException e) {
+					LogMessage("One or more XML errors prevented the file [" + definitionPath + "] from loading:");
+					LogMessage(e.Message);
+				}
+				catch (Exception e) {
+					LogMessage("Unknown error occured while reading [" + definitionPath + "]:");
 				}
 			}
 			return null;
@@ -569,98 +748,43 @@ namespace Crackdown_Installer
 		}
 
 		public async Task<bool> DownloadDependency(ModDependencyEntry dependencyEntry) {
+			if (tempDirectoryInfo == null) {
+				throw new Exception("Error: No temp directory found! Could not download dependency.");
+			}
 			string downloadDir = tempDirectoryInfo.FullName + "\\";
 
-			string downloadUri = "";
-			string? installDir = null;
+			string installDir;
 
-			string provider = dependencyEntry.Provider;
-			string branch = dependencyEntry.Branch;
-			string uri = dependencyEntry.Uri;
-
-			//get url to query for file download
-			if (provider == "github")
-			{
-				string queryUrl;
-				if (dependencyEntry.Release)
-				{
-					queryUrl = PROVIDER_GITHUB_RELEASE_URL.Replace("$id$",uri);
-					try
-					{
-						string jsonData = await AsyncJsonReq(queryUrl);
-
-						JsonDocument releaseData = JsonDocument.Parse(jsonData,DEFAULT_JSON_OPTIONS);
-						JsonElement rootElement = releaseData.RootElement;
-						downloadUri = GetJsonAttribute("zipball_url",rootElement);
-					}
-					catch (Exception e) {
-						LogMessage(e);
-						//set status fail
-						return false;
-					}
-				}
-				else
-				{
-					downloadUri = PROVIDER_GITHUB_DIRECT_URL.Replace("$id$", uri)
-						.Replace("$branch$", branch);
-					//queryUrl = PROVIDER_GITHUB_COMMIT_URL.Replace("$id$", uri)
-					//	.Replace("$branch$", branch);
-				}
-			}
-			else if (provider == "gitlab")
-			{
-				if (dependencyEntry.Release)
-				{
-					//downloadUri = PROVIDER_GITLAB_COMMIT_URL;
-					//not currently supported
-					return false;
-				}
-				else
-				{
-					downloadUri = PROVIDER_GITLAB_RELEASE_URL.Replace("$id$",uri);
-				}
-			}
-			else if (provider == "direct")
-			{
-				downloadUri = uri;
-			}
-			else if (provider == "modworkshop") {
-				//not yet supported
-				return false;
-			}
-			else
-			{
-				//unknown provider type
-				return false;
-			}
+			//info uri should have already been queried during dependency collection
+				//string branch = dependencyEntry.GetBranch();
+				//string uri = dependencyEntry.GetUri(); 
+			string directoryType = dependencyEntry.GetDefinitionType();
+			string downloadUri = dependencyEntry.GetDownloadUrl();
+			string directoryName = dependencyEntry.GetFileName();
 
 			//get final installation location
-			if (dependencyEntry.DirectoryType == "beardlib")
+			if (directoryType == "beardlib")
 			{
-				installDir = pd2InstallDirectory + "mods\\" + dependencyEntry.DirectoryName;
+				installDir = pd2InstallDirectory + "mods\\" + directoryName;
 			}
-			else if (dependencyEntry.DirectoryType == "blt")
+			else if (directoryType == "blt")
 			{
-				installDir = pd2InstallDirectory + "mods\\" + dependencyEntry.DirectoryName;
+				installDir = pd2InstallDirectory + "mods\\" + directoryName;
 			}
-			else if (dependencyEntry.DirectoryType == "overrides")
+			else if (directoryType == "overrides")
 			{
-				installDir = pd2InstallDirectory + "assets\\mod_overrides\\" + dependencyEntry.DirectoryName;
+				installDir = pd2InstallDirectory + "assets\\mod_overrides\\" + directoryName;
 			}
-			else if (dependencyEntry.DirectoryType == "root")
+			else if (directoryType == "file")
 			{
-				installDir = pd2InstallDirectory + dependencyEntry.DirectoryName;
+				installDir = pd2InstallDirectory + directoryName;
 			}
 			else
 			{
 				//unknown install directory type!
 				return false;
 			}
-			if (installDir != null)
-			{
-				return DownloadPackage(downloadDir, downloadUri, installDir);
-			}
-			return false;
+			return await DownloadPackage(downloadDir, downloadUri, installDir);
 		}
 
 		/// <summary>
@@ -673,32 +797,29 @@ namespace Crackdown_Installer
 		/// <param name="siteUri"></param>
 		/// <param name="installFilePath"></param>
 		/// <returns></returns>
-		public bool DownloadPackage(string downloadDir, string siteUri, string installFilePath)
+		public async Task<bool> DownloadPackage(string downloadDir, string siteUri, string installFilePath)
 		{
 			string downloadFileName = "tmp.zip";
 			string downloadFilePath = Path.Combine(downloadDir + downloadFileName);
 
 			if (DEBUG_NO_FILE_DOWNLOAD)
 			{
-				LogMessage("DEBUG: Pretended to download and write " + siteUri + " to " + downloadFilePath + " and move to final location " + installFilePath + "but didn't actually. :)");
+				LogMessage("DEBUG: Pretended to download and write " + siteUri + " to " + downloadFilePath + " and move to final location " + installFilePath + " but didn't actually. :)");
 
 				return true;
 			}
 
 #pragma warning disable CS0162 // Unreachable code detected
-			//debug option
 			try
 			{
 
 				LogMessage("Downloading: " + siteUri + " to " + downloadDir + "...");
 
-				using (var s = httpClientInstance.GetStreamAsync(siteUri))
-				{
-					using (var fs = new FileStream(downloadFilePath, FileMode.OpenOrCreate))
-					{
-						s.Result.CopyTo(fs);
-					}
-				}
+				Stream s = await httpClientInstance.GetStreamAsync(siteUri);
+
+				FileStream fs = new(downloadFilePath, FileMode.OpenOrCreate);
+
+				s.CopyTo(fs);
 
 				LogMessage("Unzipping " + downloadFilePath + " to " + downloadDir + "...");
 
@@ -749,6 +870,51 @@ namespace Crackdown_Installer
 			string modsPath = Path.Combine(installPath, "mods\\");
 			string modOverridesPath = Path.Combine(installPath, "assets\\mod_overrides\\");
 
+			//check dll version (special case)
+			string superbltDllPathMain = Path.Combine(installPath, SUPERBLT_DLL_NAME_MAIN);
+			string superbltDllPathAlternate = Path.Combine(installPath, SUPERBLT_DLL_NAME_ALTERNATE);
+			bool hasWsock= File.Exists(superbltDllPathMain);
+			bool hasIphlpapi = File.Exists(superbltDllPathAlternate);
+
+			if (hasWsock ^ hasIphlpapi)
+			{
+				string dllName;
+				string dllDesc = "The SuperBLT modloader dll file, required for all mods.";
+				string dllHash;
+				string dllType = "file";
+				string dllPath;
+
+				if (hasWsock)
+				{ //has WSOCK32.dll 
+					dllHash = ZNix.SuperBLT.Hasher.HashFile(superbltDllPathMain);
+					dllName = SUPERBLT_DLL_NAME_MAIN;
+					dllPath = superbltDllPathMain;
+				}
+				else //has IPHLPAPI.dll
+				{
+					useAlternateDll = true;
+					dllHash = ZNix.SuperBLT.Hasher.HashFile(superbltDllPathAlternate);
+					dllName = SUPERBLT_DLL_NAME_ALTERNATE;
+					dllPath = superbltDllPathAlternate;
+				}
+
+				dllPath = Path.Combine(installPath, dllName);
+
+				Pd2ModData dllModData = new (dllName, dllDesc, dllHash, dllType, dllPath);
+				dllModData.SetHash(dllHash);
+
+				installedMiscPd2Mods.Add(dllModData);
+				//save this as a class member and handle it as a special case
+				//instead of trying to fit it into the mod folder-based schema
+			}
+			else if (hasWsock && hasIphlpapi) {
+				//TODO
+				//show warning; installing both is bad
+			}
+			else 
+			{
+				//has neither installed; do nothing
+			}
 
 			//search mods folder 
 			foreach (string subDirectory in Microsoft.VisualBasic.FileIO.FileSystem.GetDirectories(modsPath))
@@ -759,7 +925,7 @@ namespace Crackdown_Installer
 				//must have at least one valid mod definition file to be counted as a mod
 				if (newBltMod != null || newBeardlibMod != null)
 				{
-					Pd2ModFolder newModFolder = new Pd2ModFolder(newBltMod, newBeardlibMod);
+					Pd2ModFolder newModFolder = new Pd2ModFolder(newBltMod, newBeardlibMod, subDirectory);
 					result.Add(newModFolder);
 				}
 			}
@@ -771,7 +937,7 @@ namespace Crackdown_Installer
 				Pd2ModData? newBeardlibMod = ReadXmlModData(subDirectory);
 				if (newBeardlibMod != null)
 				{
-					Pd2ModFolder newModFolder = new Pd2ModFolder(null, newBeardlibMod);
+					Pd2ModFolder newModFolder = new Pd2ModFolder(null, newBeardlibMod,subDirectory);
 					result.Add(newModFolder);
 				}
 			}
@@ -780,68 +946,75 @@ namespace Crackdown_Installer
 			//return result;
 		}
 
+		public bool ShouldUseAlternateDll()
+		{
+			return useAlternateDll;
+		}
+
+
 		/// <summary>
 		/// Holds basic information about a mod, so that this data can be compared or checked later,
 		/// eg. when searching a list of mods that are installed or not installed.
 		/// </summary>
 		public class Pd2ModData
 		{
-			private string Name { get; set; }
-			private string Description { get; set; }
-			private string ModVersion { get; set; }
-			private string ModType { get; set; }
-			private string ModPath{ get; set; }
+			private string name { get; set; }
+			private string description { get; set; }
+			private string versionId { get; set; }
+			private string definitionType { get; set; }
+			private string path{ get; set; }
+			private string? hash { get; set; }
 
 			public Pd2ModData(string? name, string? description, string? version, string? modType, string? modPath)
 			{
-				Name = name ?? string.Empty;
-				Description = description ?? string.Empty;
-				ModVersion = version ?? string.Empty;
-				ModType = modType ?? string.Empty;
-				ModPath = modPath ?? string.Empty;
+				this.name = name ?? string.Empty;
+				this.description = description ?? string.Empty;
+				this.versionId = version ?? string.Empty;
+				this.definitionType = modType ?? string.Empty;
+				this.path = modPath ?? string.Empty;
 			}
-			
+			public Pd2ModData(string? name, string? description, string? version, string? modType, string? modPath, string? hash)
+			{
+				this.name = name ?? string.Empty;
+				this.description = description ?? string.Empty;
+				this.versionId = version ?? string.Empty;
+				this.definitionType = modType ?? string.Empty;
+				this.path = modPath ?? string.Empty;
+				this.hash = hash ?? string.Empty;
+			}
+
 			/// <summary>
 			/// Get the name of this mod, as written in its definition file.
 			/// </summary>
 			/// <returns></returns>
-			public string GetName()
-			{
-				return Name;
-			}
+			public string GetName() {return this.name;}
 
-			public string GetVersion()
-			{
-				return ModVersion;
-			}
+			public string GetVersion() {return this.versionId;}
 
-			public string GetDescription()
-			{
-				return Description;
-			}
+			public string GetDescription() {return this.description;}
 
-			public string GetModType()
-			{
-				return ModType;
-			}
+			public string GetModType() {return this.definitionType; }
 			
-			public string GetModPath()
-			{
-				return ModPath;
-			}
+			public string GetModPath() {return this.path;}
 
+			public string? GetHash() {return this.hash;}
+
+			public void SetHash(string hash) { this.hash = hash; }
 		}
 
 		public class Pd2ModFolder
 		{
 			public Pd2ModData? jsonModDefinition;
 			public Pd2ModData? xmlModDefinition;
-			public Pd2ModFolder(Pd2ModData? jsonDefinition, Pd2ModData? xmlDefinition)
+			public string modFolderName;
+			public Pd2ModFolder(Pd2ModData? jsonDefinition, Pd2ModData? xmlDefinition, string folderName)
 			{
 				jsonModDefinition = jsonDefinition;
 				xmlModDefinition = xmlDefinition;
+				modFolderName = folderName;
 			}
 		}
+
 		/// <summary>
 		/// A class to represent the schema of the json manifest returned from the Crackdown update server
 		/// </summary>
@@ -861,32 +1034,52 @@ namespace Crackdown_Installer
 		/// </summary>
 		public class ModDependencyEntry
 		{
-			public string Name { get; set; }
-			public string Description { get; set; }
-			public string DirectoryType { get; set; }
-			public string DirectoryName { get; set; }
-			public string Provider { get; set; }
-			public string Uri { get; set; }
-			public string Branch { get; set; }
-			public bool Release { get; set; }
-			public string ModVersionType { get; set; }
-			public string ModVersionId { get; set; }
-			public bool Optional { get; set; }
+			private string name { get; set; }
+			private string description { get; set; }
+			private string directoryType { get; set; }
+			private string directoryName { get; set; }
+			private string provider { get; set; }
+			private string? hash { get; set; }
+			private string uri { get; set; }
+			private string branch { get; set; }
+			private bool isRelease { get; set; }
+			private string versionType { get; set; }
+			private string versionId { get; set; }
+			private bool isOptional { get; set; }
+			private string downloadUrl { get; set; }
 
-			public ModDependencyEntry(string name, string description, string directoryType, string directoryName, string provider, string uri, string branch, bool release, string modVersionType, string modVersionId, bool optional)
+
+			public ModDependencyEntry(string name, string description, string directoryType, string directoryName, string provider, string hash, string uri, string branch, bool isRelease, string versionType, string versionId, bool isOptional, string downloadUrl)
 			{
-				Name = name;
-				Description = description;
-				DirectoryType = directoryType;
-				DirectoryName = directoryName;
-				Provider = provider;
-				Uri = uri;
-				Branch = branch;
-				Release = release;
-				ModVersionType = modVersionType;
-				ModVersionId = modVersionId;
-				Optional = optional;
+				this.name = name;
+				this.description = description;
+				this.directoryType = directoryType;
+				this.directoryName = directoryName;
+				this.provider = provider;
+				this.hash = hash;
+				this.uri = uri;
+				this.branch = branch;
+				this.isRelease = isRelease;
+				this.versionType = versionType;
+				this.versionId = versionId;
+				this.isOptional = isOptional;
+				this.downloadUrl = downloadUrl;
 			}
+
+			public string GetName() { return name; }
+			public string GetDescription() { return description; }
+			public string GetDefinitionType() {  return directoryType; }
+			public string GetFileName() {  return directoryName; }
+			public string GetProvider() { return provider; }
+			public string? GetHash() { return hash; }
+			public string GetUri() { return uri; }
+			public string GetBranch() { return branch; }
+			public string GetModVersionType() { return versionType; }
+			public string GetModVersionId() {  return versionId; }
+			public bool IsOptional() { return isOptional; }
+			public bool IsRelease() { return isRelease; }
+			public string GetDownloadUrl() {  return downloadUrl; }
+
 		}
 
 		/// <summary>
