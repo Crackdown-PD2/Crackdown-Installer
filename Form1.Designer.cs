@@ -71,6 +71,7 @@
 			listBox_downloadList = new ListBox();
 			progressBar_downloadIndividual = new ProgressBar();
 			panel_stage4 = new Panel();
+			label_endTitle = new Label();
 			panel_stage1.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
 			splitContainer1.Panel1.SuspendLayout();
@@ -81,6 +82,7 @@
 			panel_stage3.SuspendLayout();
 			panel_stage3_mouseoverDesc.SuspendLayout();
 			panel_navigation.SuspendLayout();
+			panel_stage5.SuspendLayout();
 			panel_stage4.SuspendLayout();
 			SuspendLayout();
 			// 
@@ -335,11 +337,12 @@
 			// 
 			checkedListBox_dummyInstalledMods.CheckOnClick = true;
 			checkedListBox_dummyInstalledMods.Enabled = false;
+			checkedListBox_dummyInstalledMods.Font = new Font("Consolas", 9F, FontStyle.Regular, GraphicsUnit.Point);
 			checkedListBox_dummyInstalledMods.FormattingEnabled = true;
 			checkedListBox_dummyInstalledMods.HorizontalScrollbar = true;
 			checkedListBox_dummyInstalledMods.Location = new Point(366, 126);
 			checkedListBox_dummyInstalledMods.Name = "checkedListBox_dummyInstalledMods";
-			checkedListBox_dummyInstalledMods.Size = new Size(266, 166);
+			checkedListBox_dummyInstalledMods.Size = new Size(266, 157);
 			checkedListBox_dummyInstalledMods.TabIndex = 17;
 			checkedListBox_dummyInstalledMods.Visible = false;
 			// 
@@ -347,11 +350,12 @@
 			// 
 			checkedListBox_dummyMissingMods.CheckOnClick = true;
 			checkedListBox_dummyMissingMods.Enabled = false;
+			checkedListBox_dummyMissingMods.Font = new Font("Consolas", 9F, FontStyle.Regular, GraphicsUnit.Point);
 			checkedListBox_dummyMissingMods.FormattingEnabled = true;
 			checkedListBox_dummyMissingMods.HorizontalScrollbar = true;
 			checkedListBox_dummyMissingMods.Location = new Point(24, 126);
 			checkedListBox_dummyMissingMods.Name = "checkedListBox_dummyMissingMods";
-			checkedListBox_dummyMissingMods.Size = new Size(250, 166);
+			checkedListBox_dummyMissingMods.Size = new Size(250, 157);
 			checkedListBox_dummyMissingMods.TabIndex = 15;
 			checkedListBox_dummyMissingMods.Visible = false;
 			// 
@@ -469,37 +473,39 @@
 			// panel_stage5
 			// 
 			panel_stage5.BorderStyle = BorderStyle.FixedSingle;
-			panel_stage5.Location = new Point(734, 521);
+			panel_stage5.Controls.Add(label_endTitle);
+			panel_stage5.Location = new Point(719, 496);
 			panel_stage5.Name = "panel_stage5";
-			panel_stage5.Size = new Size(460, 77);
+			panel_stage5.Size = new Size(486, 114);
 			panel_stage5.TabIndex = 16;
+			panel_stage5.Visible = false;
 			// 
 			// label_downloadStatusDesc
 			// 
 			label_downloadStatusDesc.AutoSize = true;
 			label_downloadStatusDesc.Location = new Point(399, 221);
 			label_downloadStatusDesc.Name = "label_downloadStatusDesc";
-			label_downloadStatusDesc.Size = new Size(126, 15);
+			label_downloadStatusDesc.Size = new Size(224, 15);
 			label_downloadStatusDesc.TabIndex = 3;
-			label_downloadStatusDesc.Text = "PlaceholderModName";
+			label_downloadStatusDesc.Text = "Click \"Download\" to start the installation.";
 			// 
 			// label_downloadStatusTitle
 			// 
 			label_downloadStatusTitle.AutoSize = true;
 			label_downloadStatusTitle.Location = new Point(270, 221);
 			label_downloadStatusTitle.Name = "label_downloadStatusTitle";
-			label_downloadStatusTitle.Size = new Size(106, 15);
+			label_downloadStatusTitle.Size = new Size(62, 15);
 			label_downloadStatusTitle.TabIndex = 2;
-			label_downloadStatusTitle.Text = "[1/6] Downloading";
+			label_downloadStatusTitle.Text = "- KB / - KB";
 			// 
 			// listBox_downloadList
 			// 
+			listBox_downloadList.Font = new Font("Consolas", 9F, FontStyle.Regular, GraphicsUnit.Point);
 			listBox_downloadList.FormattingEnabled = true;
-			listBox_downloadList.ItemHeight = 15;
+			listBox_downloadList.ItemHeight = 14;
 			listBox_downloadList.Location = new Point(16, 13);
 			listBox_downloadList.Name = "listBox_downloadList";
-			listBox_downloadList.ScrollAlwaysVisible = true;
-			listBox_downloadList.Size = new Size(635, 154);
+			listBox_downloadList.Size = new Size(616, 144);
 			listBox_downloadList.TabIndex = 1;
 			// 
 			// progressBar_downloadIndividual
@@ -521,6 +527,15 @@
 			panel_stage4.Size = new Size(668, 260);
 			panel_stage4.TabIndex = 15;
 			panel_stage4.Visible = false;
+			// 
+			// label_endTitle
+			// 
+			label_endTitle.AutoSize = true;
+			label_endTitle.Location = new Point(136, 11);
+			label_endTitle.Name = "label_endTitle";
+			label_endTitle.Size = new Size(120, 15);
+			label_endTitle.TabIndex = 0;
+			label_endTitle.Text = "Installation Complete";
 			// 
 			// Form1
 			// 
@@ -554,6 +569,8 @@
 			panel_stage3_mouseoverDesc.PerformLayout();
 			panel_navigation.ResumeLayout(false);
 			panel_navigation.PerformLayout();
+			panel_stage5.ResumeLayout(false);
+			panel_stage5.PerformLayout();
 			panel_stage4.ResumeLayout(false);
 			panel_stage4.PerformLayout();
 			ResumeLayout(false);
@@ -603,5 +620,6 @@
 		private Label label_navigation_stage3;
 		private Label label_navigation_stage2;
 		private Label label_navigation_stage1;
+		private Label label_endTitle;
 	}
 }

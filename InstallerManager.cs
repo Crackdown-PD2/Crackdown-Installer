@@ -29,7 +29,7 @@ namespace Crackdown_Installer
 		//if true, skips sending an http req for the json file,
 		//and reads a local json file instead.
 
-		private const bool DEBUG_NO_FILE_DOWNLOAD = true;
+		private const bool DEBUG_NO_FILE_DOWNLOAD = false;
 		//if true, doesn't download the file at all.
 
 		private const bool DEBUG_NO_FILE_INSTALL = false;
@@ -742,7 +742,7 @@ namespace Crackdown_Installer
 			}
 		}
 
-		public async Task<string?> DownloadDependency(ModDependencyEntry dependencyEntry) {
+		public async Task<string?> DownloadDependency(ModDependencyEntry dependencyEntry, Action<double?, long, long?> callbackUpdateProgress) {
 			if (tempDirectoryInfo == null) {
 				throw new Exception("Error: No temp directory found! Could not download dependency.");
 			}
@@ -780,7 +780,7 @@ namespace Crackdown_Installer
 				LogMessage("Unknown installation type: [" + directoryType + "]");
 				return "Bad dependency data";
 			}
-			string? errorMsg = await DownloadPackage(downloadDir, downloadUri, installDir);
+			string? errorMsg = await DownloadPackage(downloadDir, downloadUri, installDir, callbackUpdateProgress);
 			return errorMsg;
 		}
 
@@ -794,7 +794,7 @@ namespace Crackdown_Installer
 		/// <param name="siteUri"></param>
 		/// <param name="installFilePath"></param>
 		/// <returns></returns>
-		public async Task<string?> DownloadPackage(string downloadDir, string siteUri, string installFilePath)
+		public async Task<string?> DownloadPackage(string downloadDir, string siteUri, string installFilePath, Action<double?,long,long?> callback)
 		{
 			string downloadFileName = "tmp.zip";
 			string downloadFilePath = Path.Combine(downloadDir + downloadFileName);
@@ -811,10 +811,24 @@ namespace Crackdown_Installer
 			LogMessage("Downloading: " + siteUri + " to " + downloadDir + "...");
 
 			//send download req, output to Stream
-			Stream? s = null;
+			//Stream? s = null;
 			try
 			{
-				s = await httpClientInstance.GetStreamAsync(siteUri);
+				//				await httpClientInstance.DownloadAsync(siteUri,s,)
+				//				s = await httpClientInstance.GetStreamAsync(siteUri);
+				
+				using (var client = new HttpClientDownloadWithProgress(siteUri, downloadFilePath))
+				{
+					client.ProgressChanged += (totalFileSize, totalBytesDownloaded, progressPercentage) => {
+						//LogMessage("[" + progressPercentage + "%]" + "[" + totalBytesDownloaded + "] / [" + totalFileSize + "]");
+						callback(progressPercentage,totalBytesDownloaded,totalFileSize);
+					};
+
+					await client.StartDownload();
+				}
+
+
+
 			}
 			catch (Exception e) {
 				LogMessage("Download stream aborted due to an error:");
@@ -822,9 +836,9 @@ namespace Crackdown_Installer
 				return "Could not get download stream";
 			}
 			finally {
-				s?.Close();
+//				s?.Close();
 			}
-
+			/*
 			FileStream? fs = null;
 			try
 			{
@@ -844,6 +858,7 @@ namespace Crackdown_Installer
 				s?.Close();
 				fs?.Dispose();
 			}
+			*/
 
 			LogMessage("Unzipping " + downloadFilePath + " to " + downloadDir + "...");
 

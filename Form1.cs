@@ -33,10 +33,15 @@ namespace Crackdown_Installer
 		const string TOOLTIP_DEPENDENCY_ALREADY_INSTALLED = "These are mods that you already have installed.";
 		const string TOOLTIP_DEPENDENCY_NEEDS_INSTALL = "This dependency has not yet been installed.";
 		const string DEPENDENCY_ALREADY_INSTALLED = "This mod has been installed and is up to date.";
-		const string INSTALL_STATUS_TEXT = "[$STATUS$] $NAME$";
 		const string INSTALL_STATUS_PENDING = "Pending";
 		const string INSTALL_STATUS_DONE = "Done";
 		const string INSTALL_STATUS_FAILED = "Failed ($reason$)";
+		const string INSTALL_STATUS_INPROGRESS = "In progress";
+
+
+
+		int localMaxDependencyNameLength = 0;
+		const int MIN_NUM_SPACERS = 12;
 
 		//constructor method
 		//
@@ -74,7 +79,8 @@ namespace Crackdown_Installer
 				Size = checkedListBox_dummyMissingMods.Size,
 				MinimumSize = checkedListBox_dummyMissingMods.MinimumSize,
 				MaximumSize = checkedListBox_dummyMissingMods.MaximumSize,
-				Location = checkedListBox_dummyMissingMods.Location
+				Location = checkedListBox_dummyMissingMods.Location,
+				Font = checkedListBox_dummyMissingMods.Font
 			};
 			panel_stage3.Controls.Add(checkedListBox_missingDependencyItems);
 
@@ -85,7 +91,8 @@ namespace Crackdown_Installer
 				Size = checkedListBox_dummyInstalledMods.Size,
 				MinimumSize = checkedListBox_dummyInstalledMods.MinimumSize,
 				MaximumSize = checkedListBox_dummyInstalledMods.MaximumSize,
-				Location = checkedListBox_dummyInstalledMods.Location
+				Location = checkedListBox_dummyInstalledMods.Location,
+				Font = checkedListBox_dummyInstalledMods.Font
 			};
 			panel_stage3.Controls.Add(checkedListBox_installedDependencyItems);
 
@@ -132,7 +139,7 @@ namespace Crackdown_Installer
 
 				if (!string.IsNullOrEmpty(dependencyName) && !string.IsNullOrEmpty(dependencyType))
 				{
-					
+
 					//most dependencies will be mods, which are typically folders
 					Pd2ModFolder? modFolder = null;
 					Pd2ModData? definitionFile = null;
@@ -209,7 +216,7 @@ namespace Crackdown_Installer
 								isDirectory = lastChar == "\\" || lastChar == "/";
 							}
 						}
-						
+
 						if (isDirectory)
 						{
 							currentHash = Hasher.HashDirectory(modPath);
@@ -313,18 +320,67 @@ namespace Crackdown_Installer
 				if (entry != null)
 				{
 					selectedModsToInstall.Add(entry);
+					string entryName = entry.GetName();
+					localMaxDependencyNameLength = Math.Max(entryName.Length, localMaxDependencyNameLength);
 				}
 			}
 
 			listBox_downloadList.Items.Clear();
-			foreach (ModDependencyEntry m in selectedModsToInstall)
+			foreach (ModDependencyEntry entry in selectedModsToInstall)
 			{
-				string statusText = INSTALL_STATUS_TEXT.Replace("$NAME$", m.GetName())
-						.Replace("$STATUS$", INSTALL_STATUS_PENDING);
-				int i = listBox_downloadList.Items.Add(statusText);
+				int i = listBox_downloadList.Items.Add(GetDownloadSpacerString(entry.GetName(), INSTALL_STATUS_PENDING));
 			}
 		}
 
+		private string GetDownloadSpacerString(string dependencyName, string statusName)
+		{
+			int nameLen = dependencyName.Length;
+			int numSpacers = (localMaxDependencyNameLength - nameLen) + MIN_NUM_SPACERS;
+			string spacerString = new String('.', numSpacers);
+			return dependencyName + spacerString + statusName;
+		}
+
+		void SetDownloadProgressBar(double? percent, long current, long? total)
+		{
+
+			string convertBytes(int i)
+			{
+				if (i > 1000000)
+				{
+					return String.Format($"{i / 1000000}MB");
+				}
+				else if (i > 1000)
+				{
+					return String.Format($"{i / 1000}KB");
+				}
+				else
+				{
+					return String.Format($"{i}B");
+				}
+			}
+
+			if (percent != null)
+			{
+				//				progressBar_downloadIndividual.Value = (int) percent;
+			}
+			else
+			{
+				//				progressBar_downloadIndividual.Value = 0;
+			}
+
+
+			string totalStr;
+			if (total != null)
+			{
+				totalStr = convertBytes((int)total);
+			}
+			else
+			{ totalStr = "-"; }
+
+			string currentStr = convertBytes((int)current);
+
+			label_downloadStatusTitle.Text = $"{currentStr} / {totalStr}";
+		}
 
 		void SetDownloadProgressBar(System.Windows.Forms.ProgressBar p, int current, int total)
 		{
@@ -480,37 +536,67 @@ namespace Crackdown_Installer
 			button_startDownload.Enabled = true;
 			CallbackOnDownloadDependenciesComplete(downloadResults);
 		}
-		
+
+
 		private void CallbackOnDownloadDependenciesComplete(List<DependencyDownloadResult> downloadResults)
 		{
-			if (downloadResults.Count > 0) {
-				//
-			}
-			else
+			//			listBox_downloadList.Items.Clear();
+
+			foreach (DependencyDownloadResult downloadResult in downloadResults)
 			{
-				//yay downloads complete
+				ModDependencyEntry entry = downloadResult.entry;
+				//				string name = entry.GetName();
+				//				string result = GetDownloadSpacerString(name, INSTALL_STATUS_PENDING);
+				//				string message = downloadResult.message;
+				//				int messageLen = message.Length;
+				//				listBox_downloadList.Items.Add(result);
 			}
+			label_downloadStatusDesc.Text = INSTALL_STATUS_DONE;
 		}
 
 		private async Task<List<DependencyDownloadResult>> DownloadSelectedDependencies()
 		{
 			List<DependencyDownloadResult> downloadResults = new();
 			InstallerWrapper.CreateTemporaryDirectory();
+
+			int i = 0;
+			int numDependenciesQueued = selectedModsToInstall.Count;
 			foreach (ModDependencyEntry dependencyEntry in selectedModsToInstall)
 			{
-				LogMessage("Downloading",dependencyEntry.GetName());
-				string? errorMsg = await InstallerWrapper.DownloadDependency(dependencyEntry);
+
+				string entryName = dependencyEntry.GetName();
+
+				label_downloadStatusDesc.Text = $"[{i + 1}/{numDependenciesQueued}] Downloading \"{entryName}\"...";
+
+				//reset download progress bar
+				progressBar_downloadIndividual.Value = 0;
+				LogMessage("Downloading", entryName);
+
+				Action<double?, long, long?> callbackSetDownloadProgress = SetDownloadProgressBar;
+				listBox_downloadList.Items.RemoveAt(i);
+				listBox_downloadList.Items.Insert(i, GetDownloadSpacerString(entryName, INSTALL_STATUS_INPROGRESS));
+
+				string? errorMsg = await InstallerWrapper.DownloadDependency(dependencyEntry, callbackSetDownloadProgress);
+
 				if (!string.IsNullOrEmpty(errorMsg))
 				{
-					downloadResults.Add(new DependencyDownloadResult(false, dependencyEntry, INSTALL_STATUS_FAILED.Replace("$reason$",errorMsg)));
-
 					LogMessage("Download fail");
+
+					listBox_downloadList.Items.RemoveAt(i);
+					listBox_downloadList.Items.Insert(i, GetDownloadSpacerString(entryName, INSTALL_STATUS_FAILED.Replace("$reason$", errorMsg)));
+
+					downloadResults.Add(new DependencyDownloadResult(false, dependencyEntry, INSTALL_STATUS_FAILED.Replace("$reason$", errorMsg)));
 				}
 				else
 				{
+					listBox_downloadList.Items.RemoveAt(i);
+					listBox_downloadList.Items.Insert(i, GetDownloadSpacerString(entryName, INSTALL_STATUS_DONE));
+
 					downloadResults.Add(new DependencyDownloadResult(true, dependencyEntry, INSTALL_STATUS_DONE));
 					LogMessage("Download success");
 				}
+
+				i++;
 			}
 			InstallerWrapper.DisposeTemporaryDirectory();
 
@@ -557,7 +643,7 @@ namespace Crackdown_Installer
 		}
 
 		private void richTextBox1_TextChanged(object sender, EventArgs e)
-		{}
+		{ }
 
 		private void linkLabelDiscord_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
 		{
@@ -605,7 +691,8 @@ namespace Crackdown_Installer
 			DialogResult result = folderBrowserDialog1.ShowDialog();
 		}
 
-		private void button_nextStage_Click(object sender, EventArgs e) {
+		private void button_nextStage_Click(object sender, EventArgs e)
+		{
 			MoveToNextStage();
 		}
 

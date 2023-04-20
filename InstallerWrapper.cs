@@ -30,11 +30,11 @@ namespace Crackdown_Installer
 			Application.Run(new Form1());
 		}
 
-		public static async Task<string?> DownloadDependency(ModDependencyEntry dependency)
+		public static async Task<string?> DownloadDependency(ModDependencyEntry dependency,Action<double?, long, long?> callbackUpdateProgress)
 		{
 			if (instMgr != null)
 			{
-				return await instMgr.DownloadDependency(dependency);
+				return await instMgr.DownloadDependency(dependency, callbackUpdateProgress);
 			}
 			throw new Exception("CreateTemporaryDirectory() failed- InstallerManager not initalized");
 		}
