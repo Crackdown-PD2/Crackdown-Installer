@@ -19,6 +19,7 @@ namespace Crackdown_Installer
 		int currentPage;
 		int timesClickedTitle;
 		List<Panel> panels;
+		List<System.Windows.Forms.Label> labels;
 		CheckedListBoxDisabledItems checkedListBox_missingDependencyItems;
 		CheckedListBoxDisabledItems checkedListBox_installedDependencyItems;
 
@@ -37,7 +38,6 @@ namespace Crackdown_Installer
 		const string INSTALL_STATUS_DONE = "Done";
 		const string INSTALL_STATUS_FAILED = "Failed ($reason$)";
 		const string INSTALL_STATUS_INPROGRESS = "In progress";
-
 
 
 		int localMaxDependencyNameLength = 0;
@@ -63,7 +63,13 @@ namespace Crackdown_Installer
 			panels.Add(panel_stage2);
 			panels.Add(panel_stage3);
 			panels.Add(panel_stage4);
-			//		panels.Add(panelNavigation)
+			//panels.Add(panel_stage5);
+
+			labels = new();
+			labels.Add(label_navigation_stage1);
+			labels.Add(label_navigation_stage2);
+			labels.Add(label_navigation_stage3);
+			labels.Add(label_navigation_stage4);
 
 			//register visibility change (aka on stage change) event callbacks
 			//panel_stage2.VisibleChanged += new EventHandler(this.panel_stage2_OnVisibleChanged);
@@ -107,16 +113,17 @@ namespace Crackdown_Installer
 		private void CheckExistingMods()
 		{
 
+			//remove any existing dependency options
 			allModsToInstall.Clear();
 			checkedListBox_missingDependencyItems.Items.Clear();
 			checkedListBox_installedDependencyItems.Items.Clear();
+
+			//get list of detected mods that are installed
 			InstallerWrapper.CollectExistingMods();
 
+			//get list of dependency mods used in crackdown
 			List<ModDependencyEntry> dependencyEntries = InstallerWrapper.GetModDependencyList();
-			//AddMouseoverToolTip(checkedListBox_installedDependencyItems, "These items are already installed and will be skipped.");
-			//AddMouseoverToolTip(checkedListBox_missingDependencyItems, "These items must be installed in order to use Crackdown.");
 
-			//remove any existing dependency options
 
 			foreach (ModDependencyEntry entry in dependencyEntries)
 			{
@@ -140,35 +147,41 @@ namespace Crackdown_Installer
 				if (!string.IsNullOrEmpty(dependencyName) && !string.IsNullOrEmpty(dependencyType))
 				{
 
-					//most dependencies will be mods, which are typically folders
+					// most dependencies will be mods, which are typically folders
 					Pd2ModFolder? modFolder = null;
 					Pd2ModData? definitionFile = null;
 
-					//dependencyType only indicates which definition file we use to identify a dependency as being installed or not
-					//(searching for an exact name inside a given definition file)
+
+					// find out if this dependency is already installed or not;
+					// dependencyType indicates which definition file we use to identify a dependency as being installed or not
+					// (searching for an exact name inside a given definition file)
 					if (dependencyType == "blt")
 					{
+						// use json definition
 						LogMessage("Looking for installed mod " + dependencyName);
 						modFolder = InstallerWrapper.GetBltMod(dependencyName);
 						isDependencyInstalled = modFolder != null;
 					}
 					else if (dependencyType == "beardlib")
 					{
+						// use xml definition
 						modFolder = InstallerWrapper.GetBeardlibMod(dependencyName);
 						isDependencyInstalled = modFolder != null;
 
 					}
 					else if (dependencyType == "file")
 					{
-						//this indicates that the dependency is detected as being installed only by the presence of the file itself
-						//since users can generally rename mod folders without impacting the mod's functionality
-						//(unless the mod is poorly written and does not account for this, eg. by hard-coding the folder name)
-						//then this should really only be used for mods that are individual files,
-						//which we can then also hash to compare version names
+						// detect the presence of the file itself;
+						// since users can generally rename mod folders without impacting the mod's functionality
+						// (unless the mod is poorly written and does not account for this, eg. by hard-coding the folder name)
+						// then this should really only be used for mods that are individual files,
+						// which we can then also hash to compare version names
 
 						string pd2InstallationPath = InstallerWrapper.GetPd2InstallPath();
 						string modPath = Path.Combine(pd2InstallationPath, dependencyFileName);
 
+						// find "loose" mod data
+						// (each one is added manually on a casewise basis, eg. the sblt dll)
 						Pd2ModData? miscModData = InstallerWrapper.GetMiscMod(dependencyFileName);
 
 						if (miscModData != null)
@@ -182,6 +195,9 @@ namespace Crackdown_Installer
 							else
 							{
 								ignoreThisDependency = true;
+								// previously only used to ignore
+								// dll installation for either WSOCK32 or IPHLPAPI since only one was required
+								// (not used)
 							}
 						}
 						else
@@ -194,9 +210,10 @@ namespace Crackdown_Installer
 						throw new Exception("Unknown dependency type: " + dependencyType);
 					}
 
+					// check manifest version against installed version
 					if (dependencyVersionType == "hash")
 					{
-						//determine whether to hash directory or file
+						// determine whether to hash directory or file
 
 						string pd2InstallationPath = InstallerWrapper.GetPd2InstallPath();
 						string modPath = Path.Combine(pd2InstallationPath, dependencyFileName);
@@ -205,10 +222,12 @@ namespace Crackdown_Installer
 
 						if (modFolder != null)
 						{
+							//if it has a mod folder, hash the mod folder
 							isDirectory = true;
 						}
 						else
 						{
+							// determine if the dependency is supposed to be a folder or a file based on the name
 							if (!string.IsNullOrEmpty(dependencyFileName))
 							{
 								string lastChar = dependencyFileName.Substring(dependencyFileName.Length - 1);
@@ -229,9 +248,11 @@ namespace Crackdown_Installer
 						dependencyExistingNeedsUpdate = dependencyHash != currentHash;
 					}
 					else
-					{ //standard mod folder
+					{
+						// is standard mod folder; check version in definition file
 						if (dependencyVersionType == "xml")
 						{
+							// use beardlib (xml) definition file
 							if (modFolder != null)
 							{
 								definitionFile = modFolder.xmlModDefinition;
@@ -239,6 +260,7 @@ namespace Crackdown_Installer
 						}
 						else if (dependencyVersionType == "json")
 						{
+							// use sblt (json) definition file
 							if (modFolder != null)
 							{
 								definitionFile = modFolder.jsonModDefinition;
@@ -247,6 +269,7 @@ namespace Crackdown_Installer
 
 						if (definitionFile != null)
 						{
+							// compare version (or hash) here
 							currentVersion = definitionFile.GetVersion();
 							dependencyExistingNeedsUpdate = currentVersion != dependencyVersionId;
 						}
@@ -258,42 +281,42 @@ namespace Crackdown_Installer
 				{
 					if (isDependencyInstalled)
 					{
-						//add to installed list
+						// add to already-installed list
 						int itemIndex = checkedListBox_installedDependencyItems.Items.Add(dependencyName, true);
 						if (itemIndex > -1)
 						{
-							//AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex);
 							AddMouseoverDescription(checkedListBox_installedDependencyItems, itemIndex, dependencyDesc, label_modDependenciesItemMouseverDescription);
 							checkedListBox_installedDependencyItems.CheckAndDisable(itemIndex);
 						}
 
 
-						//check manifest version against installed version
-						//if version mismatch, also add to missing list as an optional update
+						// if version mismatch, also add to missing list as an optional update
 						if (dependencyExistingNeedsUpdate)
 						{
 							int itemIndex2 = checkedListBox_missingDependencyItems.Items.Add(dependencyName, true);
 							if (itemIndex2 > -1)
 							{
+								// give tooltip "installed but needs update";
+								//add dependency to "to-install" list
 								AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex2, TOOLTIP_DEPENDENCY_NEEDS_UPDATE);
 								AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex, TOOLTIP_DEPENDENCY_NEEDS_UPDATE);
-
 								allModsToInstall.Add(entry);
 							}
 						}
 						else
 						{
+							// give tooltip "already installed", does not need update
 							AddMouseoverToolTip(checkedListBox_installedDependencyItems, itemIndex, DEPENDENCY_ALREADY_INSTALLED);
 						}
 					}
 					else
 					{
+						// is not installed; add to "to-install" list
 						int itemIndex = checkedListBox_missingDependencyItems.Items.Add(dependencyName, true);
 						allModsToInstall.Add(entry);
 						if (itemIndex != -1)
 						{
 							AddMouseoverDescription(checkedListBox_missingDependencyItems, itemIndex, dependencyDesc, label_modDependenciesItemMouseverDescription);
-							//System.Diagnostics.Debug.WriteLine("Adding missing mod " + modName + " " + itemIndex);
 							AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex, TOOLTIP_DEPENDENCY_NEEDS_INSTALL);
 							if (!dependencyIsOptional)
 							{
@@ -330,6 +353,10 @@ namespace Crackdown_Installer
 			{
 				int i = listBox_downloadList.Items.Add(GetDownloadSpacerString(entry.GetName(), INSTALL_STATUS_PENDING));
 			}
+
+			//only enable download button if there is at least one item to download
+			button_startDownload.Enabled = listBox_downloadList.Items.Count > 0;
+
 		}
 
 		private string GetDownloadSpacerString(string dependencyName, string statusName)
@@ -531,9 +558,9 @@ namespace Crackdown_Installer
 
 			List<DependencyDownloadResult> downloadResults = await DownloadSelectedDependencies();
 
-			button_prevStage.Enabled = true;
+			//button_prevStage.Enabled = true; //don't enable backtracking
 			isDownloadDependenciesInProgress = false;
-			button_startDownload.Enabled = true;
+			//button_startDownload.Enabled = true; //should only be enabled on re-evaluate missing mods
 			CallbackOnDownloadDependenciesComplete(downloadResults);
 		}
 
@@ -559,20 +586,23 @@ namespace Crackdown_Installer
 			List<DependencyDownloadResult> downloadResults = new();
 			InstallerWrapper.CreateTemporaryDirectory();
 
+			// iterate through selected downloads list in order and download each item
 			int i = 0;
 			int numDependenciesQueued = selectedModsToInstall.Count;
 			foreach (ModDependencyEntry dependencyEntry in selectedModsToInstall)
 			{
-
 				string entryName = dependencyEntry.GetName();
+				LogMessage("Downloading", entryName);
 
+				// set current download desc
 				label_downloadStatusDesc.Text = $"[{i + 1}/{numDependenciesQueued}] Downloading \"{entryName}\"...";
 
 				//reset download progress bar
 				progressBar_downloadIndividual.Value = 0;
-				LogMessage("Downloading", entryName);
 
 				Action<double?, long, long?> callbackSetDownloadProgress = SetDownloadProgressBar;
+
+				// update status to "in progress"
 				listBox_downloadList.Items.RemoveAt(i);
 				listBox_downloadList.Items.Insert(i, GetDownloadSpacerString(entryName, INSTALL_STATUS_INPROGRESS));
 
@@ -582,6 +612,7 @@ namespace Crackdown_Installer
 				{
 					LogMessage("Download fail");
 
+					// update status to "failed" (with reason)
 					listBox_downloadList.Items.RemoveAt(i);
 					listBox_downloadList.Items.Insert(i, GetDownloadSpacerString(entryName, INSTALL_STATUS_FAILED.Replace("$reason$", errorMsg)));
 
@@ -589,6 +620,7 @@ namespace Crackdown_Installer
 				}
 				else
 				{
+					// update status to "done"
 					listBox_downloadList.Items.RemoveAt(i);
 					listBox_downloadList.Items.Insert(i, GetDownloadSpacerString(entryName, INSTALL_STATUS_DONE));
 
@@ -611,8 +643,14 @@ namespace Crackdown_Installer
 
 				Panel currentPanel = panels[currentPage];
 				currentPanel.Hide();
+				System.Windows.Forms.Label currentLabel = labels[currentPage];
+				currentLabel.ForeColor = SystemColors.ControlDark;
+
 				Panel nextPanel = panels[++currentPage];
 				nextPanel.Show();
+				System.Windows.Forms.Label nextLabel = labels[currentPage];
+				nextLabel.Show();
+				nextLabel.ForeColor = Control.DefaultForeColor;
 				if (currentPage == panels.Count - 1)
 				{
 					button_nextStage.Enabled = false;
@@ -626,10 +664,16 @@ namespace Crackdown_Installer
 			{
 				button_nextStage.Enabled = true;
 				Panel currentPanel = panels[currentPage];
-
 				currentPanel.Hide();
+				System.Windows.Forms.Label currentLabel = labels[currentPage];
+				currentLabel.ForeColor = SystemColors.ControlDark;
+
+
 				Panel nextPanel = panels[--currentPage];
 				nextPanel.Show();
+				System.Windows.Forms.Label nextLabel = labels[currentPage];
+				nextLabel.ForeColor = Control.DefaultForeColor;
+
 				if (currentPage == 0)
 				{
 					button_prevStage.Enabled = false;

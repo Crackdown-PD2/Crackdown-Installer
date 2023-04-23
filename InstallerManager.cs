@@ -119,11 +119,11 @@ namespace Crackdown_Installer
 			try
 			{
 
-				//superblt modloader has two components: a basemod folder containing lua scripts,
-				//and a dll file.
-				//Both are required.
-				//the dll file can be a WSOCK32.dll (Windows Sockets API) or IPHLPAPI.dll (Windows IP Helper API)
-				//but only ONE should be used- not both! 
+				// superblt modloader has two components: a basemod folder containing lua scripts,
+				// and a dll file.
+				// Both are required.
+				// the dll file can be a WSOCK32.dll (Windows Sockets API) or IPHLPAPI.dll (Windows IP Helper API)
+				// but only ONE should be used- not both! 
 
 				ModDependencyEntry dllDependency;
 
@@ -139,7 +139,7 @@ namespace Crackdown_Installer
 				string downloadUrl;
 
 
-				if (useAlternateDll)
+				if (ShouldUseAlternateDll())
 				{
 					dllName = SUPERBLT_DLL_NAME_ALTERNATE;
 					uri = SUPERBLT_DLL_IPHLPAPI_URL;
@@ -150,17 +150,14 @@ namespace Crackdown_Installer
 					uri = SUPERBLT_DLL_WSOCK32_URL;
 				}
 
-				string queryUrl = uri;
-
-				string jsonData = await AsyncJsonReq(queryUrl);
+				string jsonData = await AsyncJsonReq(uri);
 				JsonDocument releaseData = JsonDocument.Parse(jsonData, DEFAULT_JSON_OPTIONS);
 				JsonElement secondaryRootElement = releaseData.RootElement[0];
+
 				//since we have no way of easily checking the version number of the local dll,
 				//we will always use comparing hashes instead, when it comes to updates for the dll specifically
 				versionId = GetJsonAttribute("version", secondaryRootElement);
-				//if (versionType == "hash" && string.IsNullOrEmpty(hash)) {
-					hash = GetJsonAttribute("hash", secondaryRootElement);
-				//}
+				hash = GetJsonAttribute("hash", secondaryRootElement);
 
 				downloadUrl = GetJsonAttribute("download_url", secondaryRootElement);
 
@@ -196,7 +193,7 @@ namespace Crackdown_Installer
 			{
 				StreamReader sr = new("test.json");
 				string jsonResponse = sr.ReadToEnd();
-				//create a throwaway temp element to hold the result of TryGetProperty()
+				// create a throwaway temp element to hold the result of TryGetProperty()
 				JsonElement tempElement = new();
 
 				try
@@ -726,15 +723,25 @@ namespace Crackdown_Installer
 			return GetXmlAttribute(collection, elementName) ?? fallback ?? string.Empty;
 		}
 
+		/// <summary>
+		/// Creates a temporary directory in the user's Temp folder (by default, in "\AppData\Local\Temp\" )
+		/// and save its information as a member
+		/// </summary>
 		public void CreateTempDirectory() {
-			 tempDirectoryInfo = Directory.CreateTempSubdirectory("crackdowninstaller_");
+			if (tempDirectoryInfo != null) {
+				DisposeTempDirectory();
+				tempDirectoryInfo = null;
+			}
+			tempDirectoryInfo = Directory.CreateTempSubdirectory("crackdowninstaller_");
 		}
 
+		/// <summary>
+		/// Remove the temporary directory created by CreateTempDirectory
+		/// </summary>
 		public void DisposeTempDirectory()
 		{
 			if (!DEBUG_NO_FILE_CLEANUP)
 			{
-			
 				tempDirectoryInfo = Directory.CreateTempSubdirectory("crackdowninstaller_");
 				string tempDownloadsDirectory = tempDirectoryInfo.FullName;
 				Directory.Delete(tempDownloadsDirectory + "\\", true);
@@ -742,7 +749,8 @@ namespace Crackdown_Installer
 			}
 		}
 
-		public async Task<string?> DownloadDependency(ModDependencyEntry dependencyEntry, Action<double?, long, long?> callbackUpdateProgress) {
+
+		public async Task<string?> DownloadDependency(ModDependencyEntry dependencyEntry, Action<double?, long, long?>? callbackUpdateProgress) {
 			if (tempDirectoryInfo == null) {
 				throw new Exception("Error: No temp directory found! Could not download dependency.");
 			}
@@ -794,13 +802,13 @@ namespace Crackdown_Installer
 		/// <param name="siteUri"></param>
 		/// <param name="installFilePath"></param>
 		/// <returns></returns>
-		public async Task<string?> DownloadPackage(string downloadDir, string siteUri, string installFilePath, Action<double?,long,long?> callback)
+		public async Task<string?> DownloadPackage(string downloadDir, string siteUri, string installFilePath, Action<double?,long,long?>? callbackUpdateProgress)
 		{
 			string downloadFileName = "tmp.zip";
 			string downloadFilePath = Path.Combine(downloadDir + downloadFileName);
 
 
-			//debug only: "skip" the actual download process
+			// debug only: "skip" the actual download process
 			if (DEBUG_NO_FILE_DOWNLOAD)
 			{
 				LogMessage("DEBUG: Pretended to download and write " + siteUri + " to " + downloadFilePath + " and move to final location " + installFilePath + " but didn't actually. :)");
@@ -810,20 +818,19 @@ namespace Crackdown_Installer
 
 			LogMessage("Downloading: " + siteUri + " to " + downloadDir + "...");
 
-			//send download req, output to Stream
-			//Stream? s = null;
+			// send download req
 			try
 			{
-				//				await httpClientInstance.DownloadAsync(siteUri,s,)
-				//				s = await httpClientInstance.GetStreamAsync(siteUri);
-				
-				using (var client = new HttpClientDownloadWithProgress(siteUri, downloadFilePath))
+				using (var client = new HttpClientDownloadWithProgress(httpClientInstance, siteUri, downloadFilePath))
 				{
-					client.ProgressChanged += (totalFileSize, totalBytesDownloaded, progressPercentage) => {
-						//LogMessage("[" + progressPercentage + "%]" + "[" + totalBytesDownloaded + "] / [" + totalFileSize + "]");
-						callback(progressPercentage,totalBytesDownloaded,totalFileSize);
-					};
-
+					if (callbackUpdateProgress != null)
+					{
+						client.ProgressChanged += (totalFileSize, totalBytesDownloaded, progressPercentage) =>
+						{
+							//LogMessage("[" + progressPercentage + "%]" + "[" + totalBytesDownloaded + "] / [" + totalFileSize + "]");
+							callbackUpdateProgress(progressPercentage, totalBytesDownloaded, totalFileSize);
+						};
+					}
 					await client.StartDownload();
 				}
 
@@ -833,32 +840,8 @@ namespace Crackdown_Installer
 			catch (Exception e) {
 				LogMessage("Download stream aborted due to an error:");
 				LogMessage(e.Message);
-				return "Could not get download stream";
+				return "Could not download package";
 			}
-			finally {
-//				s?.Close();
-			}
-			/*
-			FileStream? fs = null;
-			try
-			{
-				fs = new(downloadFilePath, FileMode.OpenOrCreate);
-
-				s.CopyTo(fs);
-			}
-			catch (Exception e)
-			{
-				LogMessage("Download write aborted due to an error:");
-				LogMessage(e.Message);
-				return "Could not save file";
-			}
-			finally
-			{
-				//dispose resource
-				s?.Close();
-				fs?.Dispose();
-			}
-			*/
 
 			LogMessage("Unzipping " + downloadFilePath + " to " + downloadDir + "...");
 
