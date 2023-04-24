@@ -11,7 +11,7 @@ using Crackdown_Installer;
 using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.FileIO;
 using Microsoft.Win32;
-//using ZNix.SuperBLT;
+using ZNix.SuperBLT;
 using VDF; //Valve Data Format parser 
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TreeView;
 
@@ -22,36 +22,41 @@ namespace Crackdown_Installer
 {
 	internal class InstallerManager
 	{
-		private const bool DOWNLOAD_CLOBBER_ENABLED = false;
-		//if true, allows file downloads to replace existing files by the same name.
+		private const bool DOWNLOAD_CLOBBER_ENABLED = true;
+		// if true, allows file downloads to replace existing files by the same name.
+		// must be enabled to allow updating existing mods
 
 		private const bool DEBUG_LOCAL_JSON_HTTPREQ = true;
 		//if true, skips sending an http req for the json file,
 		//and reads a local json file instead.
 
 		private const bool DEBUG_NO_FILE_DOWNLOAD = false;
-		//if true, doesn't download the file at all.
+		// if true, doesn't download the file at all.
 
 		private const bool DEBUG_NO_FILE_INSTALL = false;
-		//if true, downloads the files but doesn't actually install any files to their final locations (so as not to interfere with existing installations)
+		// if true, downloads the files but doesn't actually install any files to their final locations (so as not to interfere with existing installations)
 
 		private const bool DEBUG_NO_FILE_CLEANUP = false;
 		//if true, skips cleanup step and does not delete zip files and temp folder after installation,
 		//so that you can manually verify them if you wish.
 
-		private const int CURRENT_INSTALLER_VERSION = 2;
+		private const bool DEBUG_NO_LOGS = false;
+		// if true, skips writing logs to log file on disk
+
+		private const string LOGFILE_NAME = "installer_log.txt";
+
 		private const string DEPENDENCIES_JSON_URL = "https://raw.githubusercontent.com/Crackdown-PD2/deathvox/autoupdate/cd_dependencies.json";
-		private const string SUPERBLT_DLL_WSOCK32_URL = "https://sblt-update.znix.xyz/pd2update/updates/meta.php?id=payday2bltwsockdll"; //holds meta json info about dll updates
-		private const string SUPERBLT_DLL_IPHLPAPI_URL = "https://sblt-update.znix.xyz/pd2update/updates/meta.php?id=payday2bltdll"; //holds meta json info about dll updates
-		private const string DLL_DIFFERENCE_INFO_URL = "https://superblt.znix.xyz/#regarding-the-iphlpapidll-vs-wsock32dll-situation"; //a page for humans to read with their eyeballs, about differences between iphlpapi and wsock32 dlls
+		private const string SUPERBLT_DLL_WSOCK32_URL = "https://sblt-update.znix.xyz/pd2update/updates/meta.php?id=payday2bltwsockdll"; // holds meta json info about dll updates
+		private const string SUPERBLT_DLL_IPHLPAPI_URL = "https://sblt-update.znix.xyz/pd2update/updates/meta.php?id=payday2bltdll"; // holds meta json info about dll updates
+		private const string DLL_DIFFERENCE_INFO_URL = "https://superblt.znix.xyz/#regarding-the-iphlpapidll-vs-wsock32dll-situation"; // a page for humans to read with their eyeballs, about differences between iphlpapi and wsock32 dlls
 
 		private const string PROVIDER_GITHUB_COMMIT_URL = "https://api.github.com/repos/$id$/commits/$branch$";
 		private const string PROVIDER_GITHUB_RELEASE_URL = "https://api.github.com/repos/$id$/releases/latest";
 		private const string PROVIDER_GITHUB_DIRECT_URL = "https://github.com/$id$/archive/$branch$.zip";
 
-		//private const string PROVIDER_GITLAB_COMMIT_URL = "https://gitlab.com/api/v4/projects/$id$/repository/branches/$branch$"; //meta json info about latest commit in branch
-		private const string PROVIDER_GITLAB_RELEASE_URL = "https://gitlab.com/api/v4/projects/$id$/releases"; //direct latest release download
-		private const string PROVIDER_GITLAB_DIRECT_URL = "https://gitlab.com/api/v4/projects/$id$/repository/archive.zip"; //direct latest commit download 
+		//private const string PROVIDER_GITLAB_COMMIT_URL = "https://gitlab.com/api/v4/projects/$id$/repository/branches/$branch$"; // meta json info about latest commit in branch
+		private const string PROVIDER_GITLAB_RELEASE_URL = "https://gitlab.com/api/v4/projects/$id$/releases"; // direct latest release download
+		private const string PROVIDER_GITLAB_DIRECT_URL = "https://gitlab.com/api/v4/projects/$id$/repository/archive.zip"; // direct latest commit download 
 
 		private const string SUPERBLT_DLL_NAME_MAIN = "WSOCK32.dll";
 		private const string SUPERBLT_DLL_NAME_ALTERNATE = "IPHLPAPI.dll";
@@ -64,7 +69,7 @@ namespace Crackdown_Installer
 
 		private const string STEAM_LIBRARY_MANIFEST_PATH = "%%STEAM%%\\steamapps\\libraryfolders.vdf";
 
-		private const string PD2_APPID = "218620"; //Steam appid for PAYDAY 2
+		private const string PD2_APPID = "218620"; // Steam appid for PAYDAY 2
 
 		private string? steamInstallDirectory;
 		private string? pd2InstallDirectory;
@@ -76,10 +81,11 @@ namespace Crackdown_Installer
 		private List<ModDependencyEntry> dependenciesFromServer = new();
 
 		private HttpClient httpClientInstance;
+		private StreamWriter? logStreamWriter;
 
-		public List<Pd2ModFolder> installedPd2Mods = new(); //holds information about any mod folders which are placed in both standard install locations (mods, mod_overrides)
+		public List<Pd2ModFolder> installedPd2Mods = new(); // holds information about any mod folders which are placed in both standard install locations (mods, mod_overrides)
 
-		public List<Pd2ModData> installedMiscPd2Mods = new(); //holds loose files that are not stored in standard mod folder format, ie modloader dll
+		public List<Pd2ModData> installedMiscPd2Mods = new(); // holds loose files that are not stored in standard mod folder format, ie modloader dll
 
 		private JsonDocumentOptions DEFAULT_JSON_OPTIONS = new()
 		{
@@ -95,7 +101,7 @@ namespace Crackdown_Installer
 		{
 			httpClientInstance = client;
 
-			// Registry.GetValue("\\HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\Shell\\Associations\\URLAssociations\\https\\UserChoice", "SteamPath", "");
+			//Registry.GetValue("\\HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\Shell\\Associations\\URLAssociations\\https\\UserChoice", "SteamPath", "");
 
 			pd2InstallDirectory = FindPd2InstallDirectory();
 			if (string.IsNullOrEmpty(pd2InstallDirectory))
@@ -103,7 +109,10 @@ namespace Crackdown_Installer
 				LogMessage("Unable to automatically find PD2 install directory.");
 			}
 
-			//query cd update server
+			// find all currently installed pd2 mods (including superblt dll)
+			CollectPd2Mods();
+
+			// query cd update server
 			CollectDependencies();
 		}
 
@@ -141,11 +150,13 @@ namespace Crackdown_Installer
 
 				if (ShouldUseAlternateDll())
 				{
+					LogMessage("Using alternate dll");
 					dllName = SUPERBLT_DLL_NAME_ALTERNATE;
 					uri = SUPERBLT_DLL_IPHLPAPI_URL;
 				}
 				else
 				{
+					LogMessage("Using main dll");
 					dllName = SUPERBLT_DLL_NAME_MAIN;
 					uri = SUPERBLT_DLL_WSOCK32_URL;
 				}
@@ -195,7 +206,7 @@ namespace Crackdown_Installer
 				string jsonResponse = sr.ReadToEnd();
 				// create a throwaway temp element to hold the result of TryGetProperty()
 				JsonElement tempElement = new();
-
+				int currentInstallerVersion = InstallerWrapper.GetInstallerVersion();
 				try
 				{
 					JsonDocument jsonDocument = JsonDocument.Parse(jsonResponse, DEFAULT_JSON_OPTIONS);
@@ -204,13 +215,13 @@ namespace Crackdown_Installer
 					int minRequiredVersion;
 					if (rootElement.TryGetProperty("ApiVersion", out tempElement)) {
 						documentVersion = tempElement.GetInt32();
-						if (documentVersion == CURRENT_INSTALLER_VERSION) {
+						if (documentVersion == currentInstallerVersion) {
 							//up to date installer version yay
 						}
 						else {
 							if (rootElement.TryGetProperty("MinApiVersion", out tempElement)) {
 								minRequiredVersion = tempElement.GetInt32();
-								if (CURRENT_INSTALLER_VERSION > minRequiredVersion) {
+								if (currentInstallerVersion > minRequiredVersion) {
 									//todo send warning that installer may be out of date
 								}
 								else
@@ -396,6 +407,15 @@ namespace Crackdown_Installer
 		}
 
 		/// <summary>
+		/// Returns the path to the base Steam install directory.
+		/// </summary>
+		/// <returns></returns>
+		public string? GetSteamInstallDirectory()
+		{
+			return steamInstallDirectory;
+		}
+
+		/// <summary>
 		/// Returns the cached installation path for PAYDAY 2.
 		/// </summary>
 		/// <returns></returns>
@@ -550,7 +570,6 @@ namespace Crackdown_Installer
 			return false;
 		}
 
-		
 		public bool HasMiscModInstalled(string name)
 		{
 			foreach (Pd2ModData mod in installedMiscPd2Mods) {
@@ -735,6 +754,11 @@ namespace Crackdown_Installer
 			tempDirectoryInfo = Directory.CreateTempSubdirectory("crackdowninstaller_");
 		}
 
+		public DirectoryInfo? GetTempDirectory()
+		{
+			return tempDirectoryInfo;
+		}
+
 		/// <summary>
 		/// Remove the temporary directory created by CreateTempDirectory
 		/// </summary>
@@ -749,12 +773,31 @@ namespace Crackdown_Installer
 			}
 		}
 
+		public void LaunchPD2Game()
+		{
+			if (steamInstallDirectory != null)
+			{
+				string steamPath = Path.Combine(steamInstallDirectory, "steam.exe");
+				string launchProtocol = ("steam://rungameid/$id$").Replace("$id", PD2_APPID);
+				LogMessage($"Launching PD2 using [{launchProtocol}]");
+				System.Diagnostics.Process.Start(steamPath, launchProtocol);
+			}
+			else
+			{
+				LogMessage("Could not launch PAYDAY 2- no Steam install directory found");
+			}
+		}
+
 
 		public async Task<string?> DownloadDependency(ModDependencyEntry dependencyEntry, Action<double?, long, long?>? callbackUpdateProgress) {
 			if (tempDirectoryInfo == null) {
 				throw new Exception("Error: No temp directory found! Could not download dependency.");
 			}
-			string downloadDir = tempDirectoryInfo.FullName + "\\";
+			string downloadDir = tempDirectoryInfo.FullName;
+
+			string extractDirName = @"extract\";
+			tempDirectoryInfo.CreateSubdirectory(extractDirName);
+			string extractDir = Path.Combine(downloadDir,extractDirName);
 
 			string installDir;
 
@@ -788,7 +831,18 @@ namespace Crackdown_Installer
 				LogMessage("Unknown installation type: [" + directoryType + "]");
 				return "Bad dependency data";
 			}
-			string? errorMsg = await DownloadPackage(downloadDir, downloadUri, installDir, callbackUpdateProgress);
+			string? errorMsg = await DownloadPackage(downloadDir, extractDir, downloadUri, installDir, callbackUpdateProgress);
+
+			try
+			{
+				//TODO System.IO.Directory.Delete(extractDir, true); //delete temp extract folder
+			}
+			catch (Exception e)
+			{
+				LogMessage($"Warning: unable to delete temp extract folder: {e.Message}");
+			}
+
+
 			return errorMsg;
 		}
 
@@ -802,16 +856,17 @@ namespace Crackdown_Installer
 		/// <param name="siteUri"></param>
 		/// <param name="installFilePath"></param>
 		/// <returns></returns>
-		public async Task<string?> DownloadPackage(string downloadDir, string siteUri, string installFilePath, Action<double?,long,long?>? callbackUpdateProgress)
+		public async Task<string?> DownloadPackage(string downloadDir, string extractDir, string siteUri, string installFilePath, Action<double?,long,long?>? callbackUpdateProgress)
 		{
 			string downloadFileName = "tmp.zip";
 			string downloadFilePath = Path.Combine(downloadDir + downloadFileName);
-
+			//string extractDirName = "extract/";
+			//string extractDirPath = Path.Combine(downloadDir, extractDirName);
 
 			// debug only: "skip" the actual download process
 			if (DEBUG_NO_FILE_DOWNLOAD)
 			{
-				LogMessage("DEBUG: Pretended to download and write " + siteUri + " to " + downloadFilePath + " and move to final location " + installFilePath + " but didn't actually. :)");
+				LogMessage($"DEBUG: Pretended to download and write {siteUri} to {downloadFilePath} and move to final location {installFilePath} but didn't actually. :)");
 
 				return null;
 			}
@@ -838,40 +893,41 @@ namespace Crackdown_Installer
 
 			}
 			catch (Exception e) {
-				LogMessage("Download stream aborted due to an error:");
-				LogMessage(e.Message);
+				LogMessage($"Download stream aborted due to an error: {e.Message}");
 				return "Could not download package";
 			}
 
-			LogMessage("Unzipping " + downloadFilePath + " to " + downloadDir + "...");
+
+
+			LogMessage($"Unzipping {downloadFilePath} to {extractDir}...");
 
 			try
 			{
-				ZipFile.ExtractToDirectory(downloadFilePath, downloadDir);
+				ZipFile.ExtractToDirectory(downloadFilePath, extractDir);
 			}
 			catch (Exception e)
 			{
-				LogMessage("Extraction aborted due to an error:");
-				LogMessage(e.Message);
+				LogMessage($"Extraction aborted due to an error: {e.Message}");
 				return "Could not unzip downloaded archive";
 			}
 
-			foreach (string modFolder in Directory.EnumerateDirectories(downloadDir, "*", System.IO.SearchOption.TopDirectoryOnly))
+			//attempt to find downloaded folder first
+			foreach (string entryName in Directory.EnumerateDirectories(extractDir, "*", System.IO.SearchOption.TopDirectoryOnly))
 			{
 
-				LogMessage("Moving " + modFolder + " to " + installFilePath + "...");
+				LogMessage($"Moving {entryName} to {installFilePath}...");
 				if (!DEBUG_NO_FILE_INSTALL)
 				{
 					try
 					{
 						//there should only be one individual file/folder per dependency package download
-						Microsoft.VisualBasic.FileIO.FileSystem.MoveDirectory(modFolder, installFilePath, DOWNLOAD_CLOBBER_ENABLED);
+						Microsoft.VisualBasic.FileIO.FileSystem.MoveDirectory(entryName, installFilePath, DOWNLOAD_CLOBBER_ENABLED);
+						LogMessage($"Moved package folder {entryName} to {installFilePath}, clobber enabled {DOWNLOAD_CLOBBER_ENABLED}");
 						break;
 					}
 					catch (Exception e)
 					{
-						LogMessage("Installation aborted due to an error:");
-						LogMessage(e.Message);
+						LogMessage($"Installation aborted due to an error: {e.Message}");
 						return "Could not move downloaded package";
 					}
 				}
@@ -881,13 +937,49 @@ namespace Crackdown_Installer
 				}
 			}
 
+			//then try to find downloaded files
+			foreach (string entryName in Directory.EnumerateFiles(extractDir, "*", System.IO.SearchOption.TopDirectoryOnly))
+			{
+				LogMessage($"Moving {entryName} to {installFilePath}...");
+				if (!DEBUG_NO_FILE_INSTALL)
+				{
+					try
+					{
+						//there should only be one individual file/folder per dependency package download
+						Microsoft.VisualBasic.FileIO.FileSystem.MoveFile(entryName, installFilePath, DOWNLOAD_CLOBBER_ENABLED);
+						LogMessage($"Moved package {entryName} to {installFilePath}, clobber enabled {DOWNLOAD_CLOBBER_ENABLED}");
+						break;
+					}
+					catch (Exception e)
+					{
+						LogMessage($"Installation aborted due to an error: {e.Message}");
+						return "Could not move downloaded package";
+					}
+				}
+				else
+				{
+					LogMessage("[debug] Pretended to move unzipped download into final installation location but didn't actually");
+				}
+			}
+
+
+			// log the hash of the downloaded archive to the debug log
+			try
+			{
+				string hash = Hasher.HashFile(downloadFilePath);
+				LogMessage($"Downloaded package successfully. (Hash: [{hash}]");
+			}
+			catch (IOException e)
+			{
+				LogMessage($"Could not read the downloaded package file/folder: {e.Message}");
+			}
+
 			try {
 				System.IO.File.Delete(downloadFilePath); //delete tmp zip file
 			}
 			catch (Exception e)
 			{
-				LogMessage("Warning: unable to delete downloaded dependency archive file");
-				LogMessage(e.Message);
+				LogMessage($"Warning: unable to delete downloaded dependency archive file: {e.Message}");
 			}
 
 			//success; do not return an error message
@@ -931,19 +1023,21 @@ namespace Crackdown_Installer
 
 				if (hasWsock)
 				{ //has WSOCK32.dll 
+					LogMessage($"Found installed WSOCK.dll at {superbltDllPathMain}");
 					dllHash = ZNix.SuperBLT.Hasher.HashFile(superbltDllPathMain);
 					dllName = SUPERBLT_DLL_NAME_MAIN;
 					dllPath = superbltDllPathMain;
 				}
 				else //has IPHLPAPI.dll
 				{
+					LogMessage($"Found installed IPHLPAPI.dll at {superbltDllPathAlternate}");
 					useAlternateDll = true;
 					dllHash = ZNix.SuperBLT.Hasher.HashFile(superbltDllPathAlternate);
 					dllName = SUPERBLT_DLL_NAME_ALTERNATE;
 					dllPath = superbltDllPathAlternate;
 				}
 
-				dllPath = Path.Combine(installPath, dllName);
+				//dllPath = Path.Combine(installPath, dllName);
 
 				Pd2ModData dllModData = new (dllName, dllDesc, dllHash, dllType, dllPath);
 				dllModData.SetHash(dllHash);
@@ -1140,35 +1234,91 @@ namespace Crackdown_Installer
 
 		}
 
+
 		/// <summary>
 		/// 
 		/// </summary>
 		/// <param name="message"></param>
 		public static void LogMessage(params object[] message)
 		{
-			string s = "";
-			string div = ", ";
-			int i = 0; //num args
-			foreach (object o in message) {
-				i++;
-				if (i > 1)
-				{
-					s = s + div;
-				}
-
-				if (o != null)
-				{
-					s = s + o.ToString();
-				}
-				else
-				{
-					s = s + "[null]";
-				}
+			if (DEBUG_NO_LOGS)
+			{
+				return;
 			}
-			string timeStamp = DateTime.Now.ToString();
-			s = "[" + timeStamp + "] " + s;
-			System.Diagnostics.Debug.WriteLine(s);
+			else
+			{
+				//build output string
+
+				string s = "";
+				string div = " ";
+				int i = 0; //num args
+				foreach (object o in message) {
+					i++;
+					if (i > 1)
+					{
+						s = s + div;
+					}
+
+					if (o != null)
+					{
+						s = s + o.ToString();
+					}
+					else
+					{
+						s = s + "[null]";
+					}
+				}
+				string timeStamp = DateTime.Now.ToString();
+				s = "[" + timeStamp + "] " + s;
+
+				// write to system output
+				System.Diagnostics.Debug.WriteLine(s);
+
+				// write to installer log
+				InstallerWrapper.WriteLog(s);
+			}
 		}
 
+		public void CreateLogStreamWriter()
+		{
+			DirectoryInfo? tempDir = GetTempDirectory();
+			if (tempDir != null)
+			{
+				string tempDirPath = tempDir.FullName;
+				string logPath = Path.Combine(tempDirPath, LOGFILE_NAME);
+				logStreamWriter = new StreamWriter(logPath);
+			}
+		}
+
+		public void DisposeLogStreamWriter()
+		{
+			if (logStreamWriter != null) {
+				logStreamWriter.Flush();
+				logStreamWriter.Dispose();
+				logStreamWriter = null;
+			}
+		}
+
+		public async void WriteLogMessage(string s)
+		{
+			StreamWriter? logFile = logStreamWriter;
+			if (logFile != null)
+			{
+				try
+				{
+					await logFile.WriteAsync(s + "\n");
+					await logFile.FlushAsync();
+				}
+				catch (Exception e)
+				{
+					//manually write system debug log instead of writing to log
+					System.Diagnostics.Debug.WriteLine($"Failed writing log message [{s}]: {e}");
+				}
+			}
+			else
+			{
+				System.Diagnostics.Debug.WriteLine($"Log file does not exist");
+			}
+		}
 	}
 }

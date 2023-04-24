@@ -60,19 +60,23 @@
 			button_prevStage = new Button();
 			button_nextStage = new Button();
 			panel_navigation = new Panel();
+			button_finishAndLaunch = new Button();
 			label_navigation_stage4 = new Label();
 			label_navigation_stage3 = new Label();
 			label_navigation_stage2 = new Label();
 			label_navigation_stage1 = new Label();
 			toolTip1 = new ToolTip(components);
 			panel_stage5 = new Panel();
+			button_finalQuit = new Button();
+			button_openTempFolder = new Button();
+			label_endDesc = new Label();
 			label_endTitle = new Label();
 			label_downloadStatusDesc = new Label();
 			label_downloadStatusTitle = new Label();
 			listBox_downloadList = new ListBox();
 			progressBar_downloadIndividual = new ProgressBar();
 			panel_stage4 = new Panel();
-			label_endDesc = new Label();
+			label_navigation_stage5 = new Label();
 			panel_stage1.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
 			splitContainer1.Panel1.SuspendLayout();
@@ -184,7 +188,7 @@
 			// button_quit
 			// 
 			button_quit.Anchor = AnchorStyles.None;
-			button_quit.Location = new Point(904, 9);
+			button_quit.Location = new Point(1052, 5);
 			button_quit.Name = "button_quit";
 			button_quit.Size = new Size(101, 28);
 			button_quit.TabIndex = 2;
@@ -398,7 +402,7 @@
 			// 
 			button_prevStage.Anchor = AnchorStyles.None;
 			button_prevStage.FlatStyle = FlatStyle.System;
-			button_prevStage.Location = new Point(729, 9);
+			button_prevStage.Location = new Point(890, 5);
 			button_prevStage.Name = "button_prevStage";
 			button_prevStage.Size = new Size(74, 28);
 			button_prevStage.TabIndex = 8;
@@ -409,7 +413,7 @@
 			// button_nextStage
 			// 
 			button_nextStage.Anchor = AnchorStyles.None;
-			button_nextStage.Location = new Point(816, 9);
+			button_nextStage.Location = new Point(970, 5);
 			button_nextStage.Name = "button_nextStage";
 			button_nextStage.Size = new Size(76, 28);
 			button_nextStage.TabIndex = 9;
@@ -420,6 +424,8 @@
 			// panel_navigation
 			// 
 			panel_navigation.BorderStyle = BorderStyle.Fixed3D;
+			panel_navigation.Controls.Add(label_navigation_stage5);
+			panel_navigation.Controls.Add(button_finishAndLaunch);
 			panel_navigation.Controls.Add(label_navigation_stage4);
 			panel_navigation.Controls.Add(label_navigation_stage3);
 			panel_navigation.Controls.Add(label_navigation_stage2);
@@ -433,6 +439,16 @@
 			panel_navigation.Size = new Size(1225, 44);
 			panel_navigation.TabIndex = 10;
 			panel_navigation.Paint += panel4_Paint;
+			// 
+			// button_finishAndLaunch
+			// 
+			button_finishAndLaunch.Location = new Point(707, 5);
+			button_finishAndLaunch.Name = "button_finishAndLaunch";
+			button_finishAndLaunch.Size = new Size(177, 28);
+			button_finishAndLaunch.TabIndex = 6;
+			button_finishAndLaunch.Text = "Finish and Launch PAYDAY 2";
+			button_finishAndLaunch.UseVisualStyleBackColor = true;
+			button_finishAndLaunch.Click += button_finishAndLaunch_Click;
 			// 
 			// label_navigation_stage4
 			// 
@@ -469,13 +485,15 @@
 			label_navigation_stage1.AutoSize = true;
 			label_navigation_stage1.Location = new Point(20, 16);
 			label_navigation_stage1.Name = "label_navigation_stage1";
-			label_navigation_stage1.Size = new Size(32, 15);
+			label_navigation_stage1.Size = new Size(31, 15);
 			label_navigation_stage1.TabIndex = 10;
-			label_navigation_stage1.Text = "Intro";
+			label_navigation_stage1.Text = "Start";
 			// 
 			// panel_stage5
 			// 
 			panel_stage5.BorderStyle = BorderStyle.FixedSingle;
+			panel_stage5.Controls.Add(button_finalQuit);
+			panel_stage5.Controls.Add(button_openTempFolder);
 			panel_stage5.Controls.Add(label_endDesc);
 			panel_stage5.Controls.Add(label_endTitle);
 			panel_stage5.Location = new Point(719, 496);
@@ -484,12 +502,42 @@
 			panel_stage5.TabIndex = 16;
 			panel_stage5.Visible = false;
 			// 
+			// button_finalQuit
+			// 
+			button_finalQuit.Location = new Point(186, 74);
+			button_finalQuit.Name = "button_finalQuit";
+			button_finalQuit.Size = new Size(90, 28);
+			button_finalQuit.TabIndex = 5;
+			button_finalQuit.Text = "Finish";
+			button_finalQuit.UseVisualStyleBackColor = true;
+			button_finalQuit.Click += button_finalQuit_Click;
+			// 
+			// button_openTempFolder
+			// 
+			button_openTempFolder.Location = new Point(59, 74);
+			button_openTempFolder.Name = "button_openTempFolder";
+			button_openTempFolder.Size = new Size(115, 28);
+			button_openTempFolder.TabIndex = 4;
+			button_openTempFolder.Text = "Show Logs Folder";
+			button_openTempFolder.UseVisualStyleBackColor = true;
+			button_openTempFolder.Click += button_openTempFolder_Click;
+			// 
+			// label_endDesc
+			// 
+			label_endDesc.Location = new Point(108, 36);
+			label_endDesc.Name = "label_endDesc";
+			label_endDesc.Size = new Size(266, 44);
+			label_endDesc.TabIndex = 1;
+			label_endDesc.Text = "Installation complete. You can now launch PAYDAY 2 and play the Crackdown Mod!";
+			label_endDesc.TextAlign = ContentAlignment.TopCenter;
+			// 
 			// label_endTitle
 			// 
 			label_endTitle.AutoSize = true;
-			label_endTitle.Location = new Point(167, 11);
+			label_endTitle.Font = new Font("Segoe UI", 20.25F, FontStyle.Regular, GraphicsUnit.Point);
+			label_endTitle.Location = new Point(108, -1);
 			label_endTitle.Name = "label_endTitle";
-			label_endTitle.Size = new Size(120, 15);
+			label_endTitle.Size = new Size(271, 37);
 			label_endTitle.TabIndex = 0;
 			label_endTitle.Text = "Installation Complete";
 			label_endTitle.TextAlign = ContentAlignment.TopCenter;
@@ -542,14 +590,15 @@
 			panel_stage4.TabIndex = 15;
 			panel_stage4.Visible = false;
 			// 
-			// label_endDesc
+			// label_navigation_stage5
 			// 
-			label_endDesc.Location = new Point(98, 41);
-			label_endDesc.Name = "label_endDesc";
-			label_endDesc.Size = new Size(266, 44);
-			label_endDesc.TabIndex = 1;
-			label_endDesc.Text = "Installation complete. You can now launch PAYDAY 2 and play the Crackdown Mod!";
-			label_endDesc.TextAlign = ContentAlignment.TopCenter;
+			label_navigation_stage5.AutoSize = true;
+			label_navigation_stage5.ForeColor = SystemColors.ControlDark;
+			label_navigation_stage5.Location = new Point(530, 16);
+			label_navigation_stage5.Name = "label_navigation_stage5";
+			label_navigation_stage5.Size = new Size(38, 15);
+			label_navigation_stage5.TabIndex = 14;
+			label_navigation_stage5.Text = "Finish";
 			// 
 			// Form1
 			// 
@@ -638,5 +687,9 @@
 		private Label label_navigation_stage1;
 		private Label label_endTitle;
 		private Label label_endDesc;
+		private Button button_openTempFolder;
+		private Button button_finalQuit;
+		private Button button_finishAndLaunch;
+		private Label label_navigation_stage5;
 	}
 }

@@ -38,6 +38,7 @@ namespace Crackdown_Installer
 		const string INSTALL_STATUS_DONE = "Done";
 		const string INSTALL_STATUS_FAILED = "Failed ($reason$)";
 		const string INSTALL_STATUS_INPROGRESS = "In progress";
+		const string STAGE_DESC_ALL_ALREADY_INSTALLED = "You already have all Crackdown packages installed and up-to-date! You may close this installer and launch PAYDAY 2 at any time to play Crackdown.";
 
 
 		int localMaxDependencyNameLength = 0;
@@ -63,13 +64,14 @@ namespace Crackdown_Installer
 			panels.Add(panel_stage2);
 			panels.Add(panel_stage3);
 			panels.Add(panel_stage4);
-			//panels.Add(panel_stage5);
+			panels.Add(panel_stage5);
 
 			labels = new();
 			labels.Add(label_navigation_stage1);
 			labels.Add(label_navigation_stage2);
 			labels.Add(label_navigation_stage3);
 			labels.Add(label_navigation_stage4);
+			labels.Add(label_navigation_stage5);
 
 			//register visibility change (aka on stage change) event callbacks
 			//panel_stage2.VisibleChanged += new EventHandler(this.panel_stage2_OnVisibleChanged);
@@ -89,6 +91,28 @@ namespace Crackdown_Installer
 				Font = checkedListBox_dummyMissingMods.Font
 			};
 			panel_stage3.Controls.Add(checkedListBox_missingDependencyItems);
+
+			// disable "next stage" button when there are no items selected
+			void OnItemCheckChanged(object? sender, ItemCheckEventArgs e)
+			{
+				CheckedListBoxDisabledItems send = (CheckedListBoxDisabledItems)sender;
+
+				// evaluate true number of checked items
+				// since this event is run before the checked items count is updated
+				int count = send.CheckedItems.Count;
+				if (e.NewValue == CheckState.Unchecked)
+				{
+					count--;
+				}
+				else if (e.NewValue == CheckState.Checked)
+				{
+					count++;
+				}
+				button_nextStage.Enabled = count > 0;
+
+			}
+			checkedListBox_missingDependencyItems.ItemCheck += new ItemCheckEventHandler(OnItemCheckChanged);
+
 
 			checkedListBox_installedDependencyItems = new()
 			{
@@ -113,17 +137,23 @@ namespace Crackdown_Installer
 		private void CheckExistingMods()
 		{
 
-			//remove any existing dependency options
+			// remove any existing dependency options
 			allModsToInstall.Clear();
 			checkedListBox_missingDependencyItems.Items.Clear();
 			checkedListBox_installedDependencyItems.Items.Clear();
 
-			//get list of detected mods that are installed
+			// get list of detected mods that are installed
 			InstallerWrapper.CollectExistingMods();
 
-			//get list of dependency mods used in crackdown
+			// get list of dependency mods used in crackdown
 			List<ModDependencyEntry> dependencyEntries = InstallerWrapper.GetModDependencyList();
 
+			if (dependencyEntries.Count == 0)
+			{
+				//todo dialog box error
+				//error fetching dependencies, please quit and try again later
+				//or download manually
+			}
 
 			foreach (ModDependencyEntry entry in dependencyEntries)
 			{
@@ -224,25 +254,32 @@ namespace Crackdown_Installer
 						{
 							//if it has a mod folder, hash the mod folder
 							isDirectory = true;
+							isDependencyInstalled = System.IO.Directory.Exists(modPath);
 						}
 						else
 						{
 							// determine if the dependency is supposed to be a folder or a file based on the name
-							if (!string.IsNullOrEmpty(dependencyFileName))
+							isDirectory = InstallerWrapper.IsDirectory(dependencyFileName);
+							if (isDirectory)
 							{
-								string lastChar = dependencyFileName.Substring(dependencyFileName.Length - 1);
-
-								isDirectory = lastChar == "\\" || lastChar == "/";
+								isDependencyInstalled = System.IO.Directory.Exists(modPath);
+							}
+							else
+							{
+								isDependencyInstalled = System.IO.File.Exists(modPath);
 							}
 						}
 
-						if (isDirectory)
+						if (isDependencyInstalled)
 						{
-							currentHash = Hasher.HashDirectory(modPath);
-						}
-						else
-						{
-							currentHash = Hasher.HashFile(modPath);
+							if (isDirectory)
+							{
+								currentHash = Hasher.HashDirectory(modPath);
+							}
+							else
+							{
+								currentHash = Hasher.HashFile(modPath);
+							}
 						}
 
 						dependencyExistingNeedsUpdate = dependencyHash != currentHash;
@@ -326,9 +363,25 @@ namespace Crackdown_Installer
 					}
 				}
 			}
+
+			if (checkedListBox_missingDependencyItems.Items.Count == 0)
+			{
+				// tell user that no downloads are required,
+				// and that they may quit and play at any time
+				label_stage3Desc.Text = STAGE_DESC_ALL_ALREADY_INSTALLED;
+				button_nextStage.Enabled = false;
+			}
 		}
 
 
+		private void CallbackOnQuitButtonPressed()
+		{
+			//pre-quit callback
+			InstallerWrapper.OnApplicationClose();
+
+			//quit application
+			Application.Exit();
+		}
 
 		private void CallbackDetectPd2InstallDirectory()
 		{
@@ -518,7 +571,7 @@ namespace Crackdown_Installer
 		}
 
 		/// <summary>
-		/// Event handler for showing the installation page.
+		/// Event handler for showing the "select packages" page.
 		/// </summary>
 		/// <param name="sender"></param>
 		/// <param name="e"></param>
@@ -531,7 +584,7 @@ namespace Crackdown_Installer
 		}
 
 		/// <summary>
-		/// Event handler for showing the installation page.
+		/// Event handler for showing the "download packages" page.
 		/// </summary>
 		/// <param name="sender"></param>
 		/// <param name="e"></param>
@@ -546,7 +599,7 @@ namespace Crackdown_Installer
 		//quit button
 		private void button1_Click(object sender, EventArgs e)
 		{
-			Application.Exit();
+			CallbackOnQuitButtonPressed();
 		}
 
 		//start download button
@@ -579,12 +632,12 @@ namespace Crackdown_Installer
 				//				listBox_downloadList.Items.Add(result);
 			}
 			label_downloadStatusDesc.Text = INSTALL_STATUS_DONE;
+			button_nextStage.Enabled = true;
 		}
 
 		private async Task<List<DependencyDownloadResult>> DownloadSelectedDependencies()
 		{
 			List<DependencyDownloadResult> downloadResults = new();
-			InstallerWrapper.CreateTemporaryDirectory();
 
 			// iterate through selected downloads list in order and download each item
 			int i = 0;
@@ -630,7 +683,6 @@ namespace Crackdown_Installer
 
 				i++;
 			}
-			InstallerWrapper.DisposeTemporaryDirectory();
 
 			return downloadResults;
 		}
@@ -798,6 +850,33 @@ namespace Crackdown_Installer
 		private void label_modDependenciesItemMouseverDescription_Click(object sender, EventArgs e)
 		{
 
+		}
+
+		private void button_finalQuit_Click(object sender, EventArgs e)
+		{
+			CallbackOnQuitButtonPressed();
+		}
+
+		private void button_finishAndLaunch_Click(object sender, EventArgs e)
+		{
+			string? steamDir = InstallerWrapper.GetSteamDirectory();
+			if (steamDir != null)
+			{
+				try
+				{
+					InstallerWrapper.LaunchPD2();
+				}
+				catch (Exception er)
+				{
+					LogMessage($"Could not launch PAYDAY 2: {er}");
+				}
+			}
+			CallbackOnQuitButtonPressed();
+		}
+
+		private void button_openTempFolder_Click(object sender, EventArgs e)
+		{
+			InstallerWrapper.OpenTempDirectory();
 		}
 	}
 
