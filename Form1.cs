@@ -1,15 +1,5 @@
-using Microsoft.Win32;
-using System.Diagnostics;
-using System.Windows.Forms;
-using System.Reflection.Emit;
 using static Crackdown_Installer.InstallerManager;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
-using System.Reflection.Metadata.Ecma335;
-using System.Drawing.Text;
-using System.Security.Policy;
 using ZNix.SuperBLT;
-using System.IO;
-using System.CodeDom;
 
 namespace Crackdown_Installer
 {
@@ -743,38 +733,17 @@ namespace Crackdown_Installer
 
 		private void linkLabelDiscord_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
 		{
-			try
-			{
-				System.Diagnostics.Process.Start("https://discord.gg/dak2zQ2");
-			}
-			catch (System.ComponentModel.Win32Exception ex)
-			{
-				LogMessage(ex.Message);
-			}
+			InstallerWrapper.BrowserOpenDiscord();
 		}
 
 		private void linkLabelHomepage_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
 		{
-			try
-			{
-				System.Diagnostics.Process.Start("http://crackdownmod.com/");
-			}
-			catch (System.ComponentModel.Win32Exception ex)
-			{
-				LogMessage(ex.Message);
-			}
+			InstallerWrapper.BrowserOpenHomepage();
 		}
 
 		private void linkLabelWiki_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
 		{
-			try
-			{
-				System.Diagnostics.Process.Start("https://totalcrackdown.wiki.gg/");
-			}
-			catch (System.ComponentModel.Win32Exception ex)
-			{
-				LogMessage(ex.Message);
-			}
+			InstallerWrapper.BrowserOpenWiki();
 		}
 
 		private void Form1_Load(object sender, EventArgs e)

@@ -1,19 +1,9 @@
-﻿using System;
-using System.Drawing.Text;
-using System.IO.Compression;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography.X509Certificates;
-using System.Security.Policy;
+﻿using System.IO.Compression;
 using System.Text.Json;
 using System.Xml;
-using System.Xml.Linq;
-using Crackdown_Installer;
-using Microsoft.VisualBasic;
-using Microsoft.VisualBasic.FileIO;
 using Microsoft.Win32;
 using ZNix.SuperBLT;
 using VDF; //Valve Data Format parser 
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TreeView;
 
 //Stores result data from installation file operations
 //such as finding/hashing installed mods, querying required dependencies from the server
@@ -65,9 +55,9 @@ namespace Crackdown_Installer
 		private const string XML_MOD_DEFINITION_NAME = "main.xml";
 
 		private const string KEY_USER_ROOT = "HKEY_CURRENT_USER";
-		private const string KEY_VALVE_STEAM = "Software\\Valve\\Steam";
+		private const string KEY_VALVE_STEAM = @"Software\Valve\Steam";
 
-		private const string STEAM_LIBRARY_MANIFEST_PATH = "%%STEAM%%\\steamapps\\libraryfolders.vdf";
+		private const string STEAM_LIBRARY_MANIFEST_PATH = @"%%STEAM%%\steamapps\libraryfolders.vdf";
 
 		private const string PD2_APPID = "218620"; // Steam appid for PAYDAY 2
 
@@ -100,8 +90,6 @@ namespace Crackdown_Installer
 		public InstallerManager(HttpClient client)
 		{
 			httpClientInstance = client;
-
-			//Registry.GetValue("\\HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\Shell\\Associations\\URLAssociations\\https\\UserChoice", "SteamPath", "");
 
 			pd2InstallDirectory = FindPd2InstallDirectory();
 			if (string.IsNullOrEmpty(pd2InstallDirectory))
@@ -433,7 +421,7 @@ namespace Crackdown_Installer
 		private string? FindPd2InstallDirectory() {
 
 			//search for steam install directory as stored in registry
-			object? registryValue = Registry.GetValue(KEY_USER_ROOT + "\\" + KEY_VALVE_STEAM, "SteamPath", "");
+			object? registryValue = Registry.GetValue(KEY_USER_ROOT + @"\" + KEY_VALVE_STEAM, "SteamPath", "");
 			if (registryValue != null)
 			{
 				steamInstallDirectory = registryValue.ToString();
@@ -473,7 +461,7 @@ namespace Crackdown_Installer
 										{
 											//do not use Path.Combine here
 											//also replace double-escaped backslashes
-											return (libraryPath + "\\steamapps\\common\\PAYDAY 2\\").Replace("\\\\", "\\");
+											return (libraryPath + @"\steamapps\common\PAYDAY 2\").Replace(@"\\", @"\");
 										}
 									}
 								}
@@ -768,7 +756,7 @@ namespace Crackdown_Installer
 			{
 				tempDirectoryInfo = Directory.CreateTempSubdirectory("crackdowninstaller_");
 				string tempDownloadsDirectory = tempDirectoryInfo.FullName;
-				Directory.Delete(tempDownloadsDirectory + "\\", true);
+				Directory.Delete(tempDownloadsDirectory + @"\", true);
 				LogMessage("Downloads complete. Deleting " + tempDownloadsDirectory + ".");
 			}
 		}
@@ -1004,8 +992,8 @@ namespace Crackdown_Installer
 		{
 			string installPath = GetPd2InstallDirectory();
 			List<Pd2ModFolder> result = new();
-			string modsPath = Path.Combine(installPath, "mods\\");
-			string modOverridesPath = Path.Combine(installPath, "assets\\mod_overrides\\");
+			string modsPath = Path.Combine(installPath, @"mods\");
+			string modOverridesPath = Path.Combine(installPath, @"assets\mod_overrides\");
 
 			//check dll version (special case)
 			string superbltDllPathMain = Path.Combine(installPath, SUPERBLT_DLL_NAME_MAIN);

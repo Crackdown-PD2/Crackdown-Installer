@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Reflection.Emit;
-using System.Security.Cryptography.X509Certificates;
+using Microsoft.Win32;
 using static Crackdown_Installer.InstallerManager;
 
 namespace Crackdown_Installer
@@ -12,6 +8,10 @@ namespace Crackdown_Installer
 		public static InstallerManager? instMgr;
 
 		public const int CURRENT_INSTALLER_VERSION = 2;
+
+		const string URL_CRACKDOWN_DISCORD = "https://discord.gg/dak2zQ2";
+		const string URL_CRACKDOWN_HOMEPAGE = "http://crackdownmod.com/";
+		const string URL_CRACKDOWN_WIKI = "https://totalcrackdown.wiki.gg/";
 
 		/// <summary>
 		///  The main entry point for the application.
@@ -209,13 +209,80 @@ namespace Crackdown_Installer
 
 		public static bool IsDirectory(string entryName)
 		{
-			if (!string.IsNullOrEmpty(entryName))
-			{
-				string lastChar = entryName.Substring(entryName.Length - 1);
+			return entryName.EndsWith(@"\") || entryName.EndsWith(@"/");
+		}
 
-				return lastChar == "\\" || lastChar == "/";
+		public static void BrowserOpenDiscord()
+		{
+			OpenWebLink(URL_CRACKDOWN_DISCORD);
+		}
+		public static void BrowserOpenHomepage()
+		{
+			OpenWebLink(URL_CRACKDOWN_HOMEPAGE);
+		}
+
+		public static void BrowserOpenWiki()
+		{
+			OpenWebLink(URL_CRACKDOWN_WIKI);
+		}
+
+		public static string? GetPreferredBrowser()
+		{
+			string? browser = null;
+			RegistryKey? regKey = null;
+
+			try
+			{
+				regKey = Registry.ClassesRoot.OpenSubKey(@"HTTP\shell\open\command", false);
+
+				//LogMessage($"Got regKey {regKey}");
+
+				// get rid of the enclosing quotes
+				browser = regKey?.GetValue(null)?.ToString()?.ToLower().Replace("" + (char)34, "");
+
+				if (browser != null)
+				{
+					if (!browser.EndsWith("exe"))
+					{
+						// trim any arguments after the path end (after ".exe")
+						browser = browser.Substring(0, browser.LastIndexOf(".exe") + 4);
+						LogMessage($"Detected default browser {browser}");
+					}
+				}
 			}
-			return false;
+			catch (Exception e)
+			{
+				LogMessage($"Error getting reg key for default browser: {e.Message}");
+			}
+			finally
+			{
+				regKey?.Close();
+			}
+
+			return browser;
+		}
+
+		public static void OpenWebLink(string url)
+		{
+
+			string? preferredBrowser = GetPreferredBrowser();
+			
+			if (preferredBrowser != null)
+			{
+				try
+				{
+					System.Diagnostics.Process.Start(String.Format(preferredBrowser,""), url);
+				}
+				catch (System.ComponentModel.Win32Exception ex)
+				{
+					LogMessage($"Could not open web link {url}: {ex.Message}");
+				}
+			}
+			else
+			{
+				LogMessage("OpenWebLink() failed- Could not get preferred browser.");
+			}
+			
 		}
 
 		public static void CreateLogWriter()
