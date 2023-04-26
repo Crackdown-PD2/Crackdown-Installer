@@ -13,7 +13,7 @@ namespace Crackdown_Installer
 
 		public delegate void ProgressChangedHandler(long? totalFileSize, long totalBytesDownloaded, double? progressPercentage);
 
-		public event ProgressChangedHandler ProgressChanged;
+		public event ProgressChangedHandler? ProgressChanged;
 
 		public HttpClientDownloadWithProgress(HttpClient client, string downloadUrl, string destinationFilePath)
 		{

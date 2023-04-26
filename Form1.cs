@@ -7,6 +7,8 @@ namespace Crackdown_Installer
 	{
 		const int TOOLTIP_HOVER_DURATION = 10000; //10000ms -> 10s
 		int currentPage;
+		int? nextPageOverride = null;
+
 		int timesClickedTitle;
 		List<Panel> panels;
 		List<System.Windows.Forms.Label> labels;
@@ -16,31 +18,35 @@ namespace Crackdown_Installer
 		List<ModDependencyEntry> allModsToInstall = new();
 		List<ModDependencyEntry> selectedModsToInstall = new();
 
-		private bool isDownloadDependenciesInProgress = false;
 		private bool isQueryDependenciesInProgress = false;
 
-		//placeholders; should use the localization resource framework provided by microsoft
+		// placeholders; should use the localization resource framework provided by microsoft
 		const string TOOLTIP_DEPENDENCY_NEEDS_UPDATE = "Older version detected; an update is available.";
-		const string TOOLTIP_DEPENDENCY_ALREADY_INSTALLED = "These are mods that you already have installed.";
+		//const string TOOLTIP_DEPENDENCY_ALREADY_INSTALLED = "These are mods that you already have installed.";
 		const string TOOLTIP_DEPENDENCY_NEEDS_INSTALL = "This dependency has not yet been installed.";
 		const string DEPENDENCY_ALREADY_INSTALLED = "This mod has been installed and is up to date.";
 		const string INSTALL_STATUS_PENDING = "Pending";
 		const string INSTALL_STATUS_DONE = "Done";
 		const string INSTALL_STATUS_FAILED = "Failed ($reason$)";
 		const string INSTALL_STATUS_INPROGRESS = "In progress";
-		const string STAGE_DESC_ALL_ALREADY_INSTALLED = "You already have all Crackdown packages installed and up-to-date! You may close this installer and launch PAYDAY 2 at any time to play Crackdown.";
+		const string STAGE_DESC_ALL_ALREADY_INSTALLED = "You already have all Crackdown packages installed and up-to-date!";
 
+		/*
+		readonly string[] DUCKSOUNDS = {
+			@"quack1.wav",
+			@"quack2.wav"
+		};
+		*/
 
 		int localMaxDependencyNameLength = 0;
 		const int MIN_NUM_SPACERS = 12;
 
-		//constructor method
-		//
+		// constructor method
 		public Form1()
 		{
 			InitializeComponent();
 
-			//set initial value for pd2 install path
+			// set initial value for pd2 install path
 			string detectedDirectory = InstallerWrapper.GetPd2InstallPath();
 			richTextBox_pd2InstallPath.Text = detectedDirectory;
 			folderBrowserDialog1.InitialDirectory = detectedDirectory;
@@ -54,17 +60,21 @@ namespace Crackdown_Installer
 			panels.Add(panel_stage2);
 			panels.Add(panel_stage3);
 			panels.Add(panel_stage4);
-			panels.Add(panel_stage5);
+			Point basePanelLocation = new Point(0, 0);
+			panel_stage1.Location = basePanelLocation;
+			panel_stage2.Location = basePanelLocation;
+			panel_stage3.Location = basePanelLocation;
+			panel_stage4.Location = basePanelLocation;
 
 			labels = new();
 			labels.Add(label_navigation_stage1);
 			labels.Add(label_navigation_stage2);
 			labels.Add(label_navigation_stage3);
 			labels.Add(label_navigation_stage4);
-			labels.Add(label_navigation_stage5);
 
 			//register visibility change (aka on stage change) event callbacks
 			//panel_stage2.VisibleChanged += new EventHandler(this.panel_stage2_OnVisibleChanged);
+			panel_stage2.VisibleChanged += new EventHandler(this.panel_stage2_OnVisibleChanged);
 			panel_stage3.VisibleChanged += new EventHandler(this.panel_stage3_OnVisibleChanged);
 			panel_stage4.VisibleChanged += new EventHandler(this.panel_stage4_OnVisibleChanged);
 
@@ -80,7 +90,7 @@ namespace Crackdown_Installer
 				Location = checkedListBox_dummyMissingMods.Location,
 				Font = checkedListBox_dummyMissingMods.Font
 			};
-			panel_stage3.Controls.Add(checkedListBox_missingDependencyItems);
+			panel_stage2.Controls.Add(checkedListBox_missingDependencyItems);
 
 			// disable "next stage" button when there are no items selected
 			void OnItemCheckChanged(object? sender, ItemCheckEventArgs e)
@@ -114,10 +124,8 @@ namespace Crackdown_Installer
 				Location = checkedListBox_dummyInstalledMods.Location,
 				Font = checkedListBox_dummyInstalledMods.Font
 			};
-			panel_stage3.Controls.Add(checkedListBox_installedDependencyItems);
+			panel_stage2.Controls.Add(checkedListBox_installedDependencyItems);
 
-			//AddMouseoverToolTip(label_installedModsList, TOOLTIP_DEPENDENCY_ALREADY_INSTALLED);
-			//AddMouseoverToolTip(label_missingModsList, TOOLTIP_DEPENDENCY_NEEDS_INSTALL);
 		}
 
 
@@ -175,14 +183,14 @@ namespace Crackdown_Installer
 					// find out if this dependency is already installed or not;
 					// dependencyType indicates which definition file we use to identify a dependency as being installed or not
 					// (searching for an exact name inside a given definition file)
-					if (dependencyType == "blt")
+					if (dependencyType == "json")
 					{
 						// use json definition
 						LogMessage("Looking for installed mod " + dependencyName);
 						modFolder = InstallerWrapper.GetBltMod(dependencyName);
 						isDependencyInstalled = modFolder != null;
 					}
-					else if (dependencyType == "beardlib")
+					else if (dependencyType == "xml")
 					{
 						// use xml definition
 						modFolder = InstallerWrapper.GetBeardlibMod(dependencyName);
@@ -312,7 +320,7 @@ namespace Crackdown_Installer
 						int itemIndex = checkedListBox_installedDependencyItems.Items.Add(dependencyName, true);
 						if (itemIndex > -1)
 						{
-							AddMouseoverDescription(checkedListBox_installedDependencyItems, itemIndex, dependencyDesc, label_modDependenciesItemMouseverDescription);
+							AddMouseoverDescription(checkedListBox_installedDependencyItems, itemIndex, dependencyDesc, label_modDependenciesItemMouseoverDescription);
 							checkedListBox_installedDependencyItems.CheckAndDisable(itemIndex);
 						}
 
@@ -343,7 +351,7 @@ namespace Crackdown_Installer
 						allModsToInstall.Add(entry);
 						if (itemIndex != -1)
 						{
-							AddMouseoverDescription(checkedListBox_missingDependencyItems, itemIndex, dependencyDesc, label_modDependenciesItemMouseverDescription);
+							AddMouseoverDescription(checkedListBox_missingDependencyItems, itemIndex, dependencyDesc, label_modDependenciesItemMouseoverDescription);
 							AddMouseoverToolTip(checkedListBox_missingDependencyItems, itemIndex, TOOLTIP_DEPENDENCY_NEEDS_INSTALL);
 							if (!dependencyIsOptional)
 							{
@@ -358,8 +366,8 @@ namespace Crackdown_Installer
 			{
 				// tell user that no downloads are required,
 				// and that they may quit and play at any time
-				label_stage3Desc.Text = STAGE_DESC_ALL_ALREADY_INSTALLED;
-				button_nextStage.Enabled = false;
+				label_stage3Desc_2.Text = STAGE_DESC_ALL_ALREADY_INSTALLED;
+				nextPageOverride = 3;
 			}
 		}
 
@@ -565,9 +573,9 @@ namespace Crackdown_Installer
 		/// </summary>
 		/// <param name="sender"></param>
 		/// <param name="e"></param>
-		private void panel_stage3_OnVisibleChanged(object? sender, EventArgs e)
+		private void panel_stage2_OnVisibleChanged(object? sender, EventArgs e)
 		{
-			if (panel_stage3.Visible)
+			if (panel_stage2.Visible)
 			{
 				CheckExistingMods();
 			}
@@ -578,11 +586,30 @@ namespace Crackdown_Installer
 		/// </summary>
 		/// <param name="sender"></param>
 		/// <param name="e"></param>
+		private void panel_stage3_OnVisibleChanged(object? sender, EventArgs e)
+		{
+			if (panel_stage3.Visible)
+			{
+				CallbackPopulateDependencyInstallList();
+				button_nextStage.Enabled = false;
+			}
+		}
+
+		/// <summary>
+		/// Event handler for showing the "installation complete" page.
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
 		private void panel_stage4_OnVisibleChanged(object? sender, EventArgs e)
 		{
 			if (panel_stage4.Visible)
 			{
-				CallbackPopulateDependencyInstallList();
+				button_nextStage.Visible = false;
+				button_nextStage.Enabled = false;
+				button_prevStage.Visible = false;
+				button_prevStage.Enabled = false;
+				button_quit.Visible = false;
+				button_quit.Enabled = false;
 			}
 		}
 
@@ -596,13 +623,11 @@ namespace Crackdown_Installer
 		private async void button_start_Click(object sender, EventArgs e)
 		{
 			button_prevStage.Enabled = false;
-			isDownloadDependenciesInProgress = true;
 			button_startDownload.Enabled = false;
 
 			List<DependencyDownloadResult> downloadResults = await DownloadSelectedDependencies();
 
 			//button_prevStage.Enabled = true; //don't enable backtracking
-			isDownloadDependenciesInProgress = false;
 			//button_startDownload.Enabled = true; //should only be enabled on re-evaluate missing mods
 			CallbackOnDownloadDependenciesComplete(downloadResults);
 		}
@@ -610,8 +635,8 @@ namespace Crackdown_Installer
 
 		private void CallbackOnDownloadDependenciesComplete(List<DependencyDownloadResult> downloadResults)
 		{
-			//			listBox_downloadList.Items.Clear();
-
+			//listBox_downloadList.Items.Clear();
+			/*
 			foreach (DependencyDownloadResult downloadResult in downloadResults)
 			{
 				ModDependencyEntry entry = downloadResult.entry;
@@ -621,6 +646,7 @@ namespace Crackdown_Installer
 				//				int messageLen = message.Length;
 				//				listBox_downloadList.Items.Add(result);
 			}
+			*/
 			label_downloadStatusDesc.Text = INSTALL_STATUS_DONE;
 			button_nextStage.Enabled = true;
 		}
@@ -679,54 +705,61 @@ namespace Crackdown_Installer
 
 		private void MoveToNextStage()
 		{
+			if (nextPageOverride != null)
+			{
+				MoveToStage((int)nextPageOverride);
+				nextPageOverride = null;
+				return;
+			}
 			if (currentPage < panels.Count - 1)
 			{
-				button_prevStage.Enabled = true;
-
-				Panel currentPanel = panels[currentPage];
-				currentPanel.Hide();
-				System.Windows.Forms.Label currentLabel = labels[currentPage];
-				currentLabel.ForeColor = SystemColors.ControlDark;
-
-				Panel nextPanel = panels[++currentPage];
-				nextPanel.Show();
-				System.Windows.Forms.Label nextLabel = labels[currentPage];
-				nextLabel.Show();
-				nextLabel.ForeColor = Control.DefaultForeColor;
-				if (currentPage == panels.Count - 1)
-				{
-					button_nextStage.Enabled = false;
-				}
+				MoveToStage(currentPage + 1);
 			}
+		}
+
+		private void MoveToStage(int nextStage)
+		{
+			int prevStage = currentPage;
+			bool isWithinStageBounds(int i)
+			{
+				return (i <= panels.Count - 1 && i >= 0);
+			}
+			if (isWithinStageBounds(prevStage) && isWithinStageBounds(nextStage))
+			{
+
+				button_nextStage.Enabled = nextStage < panels.Count - 1;
+				button_prevStage.Enabled = (nextStage > 0);
+
+				Panel prevPanel = panels[prevStage];
+				prevPanel.Hide();
+				System.Windows.Forms.Label prevLabel = labels[prevStage];
+				prevLabel.ForeColor = SystemColors.ControlDark;
+
+				Panel nextPanel = panels[nextStage];
+				nextPanel.Show();
+				System.Windows.Forms.Label nextLabel = labels[nextStage];
+				nextLabel.ForeColor = Control.DefaultForeColor;
+				LogMessage($"paging from {currentPage} to {nextStage}");
+
+				currentPage = nextStage;
+			}
+			else
+			{
+				LogMessage($"Couldn't navigate to next page- one or more indices was out of bounds! previous {prevStage}, next {nextStage}");
+			}
+
 		}
 
 		private void MoveToPrevStage()
 		{
 			if (currentPage > 0)
 			{
-				button_nextStage.Enabled = true;
-				Panel currentPanel = panels[currentPage];
-				currentPanel.Hide();
-				System.Windows.Forms.Label currentLabel = labels[currentPage];
-				currentLabel.ForeColor = SystemColors.ControlDark;
-
-
-				Panel nextPanel = panels[--currentPage];
-				nextPanel.Show();
-				System.Windows.Forms.Label nextLabel = labels[currentPage];
-				nextLabel.ForeColor = Control.DefaultForeColor;
-
-				if (currentPage == 0)
-				{
-					button_prevStage.Enabled = false;
-				}
+				MoveToStage(currentPage - 1);
 			}
 		}
 
 		private void folderBrowserDialog1_HelpRequest(object sender, EventArgs e)
-		{
-
-		}
+		{ }
 
 		private void richTextBox1_TextChanged(object sender, EventArgs e)
 		{ }
@@ -747,9 +780,7 @@ namespace Crackdown_Installer
 		}
 
 		private void Form1_Load(object sender, EventArgs e)
-		{
-
-		}
+		{ }
 
 		private void button_browsePath_Click(object sender, EventArgs e)
 		{
@@ -788,7 +819,7 @@ namespace Crackdown_Installer
 		{
 			if (folderBrowserDialog1.ShowDialog() == DialogResult.OK)
 			{
-				richTextBox_pd2InstallPath.Text = folderBrowserDialog1.SelectedPath;
+				richTextBox_pd2InstallPath.Text = folderBrowserDialog1.SelectedPath + @"\";
 			}
 		}
 
@@ -813,13 +844,26 @@ namespace Crackdown_Installer
 
 		private void pictureBox_cdLogo_Click(object sender, EventArgs e)
 		{
+			/*
+				int i = new Random().Next(DUCKSOUNDS.Length);
+				string snd = DUCKSOUNDS[i];
 
+				using (var player = new System.Media.SoundPlayer(snd))
+				{
+					try
+					{
+						player.Play();
+					}
+					catch (Exception e)
+					{
+						LogMessage($"Could not play sound: {e.Message}");
+					}
+				}
+			*/
 		}
 
 		private void label_modDependenciesItemMouseverDescription_Click(object sender, EventArgs e)
-		{
-
-		}
+		{ }
 
 		private void button_finalQuit_Click(object sender, EventArgs e)
 		{
@@ -846,6 +890,26 @@ namespace Crackdown_Installer
 		private void button_openTempFolder_Click(object sender, EventArgs e)
 		{
 			InstallerWrapper.OpenTempDirectory();
+		}
+
+		private void splitContainer1_Panel2_Paint(object sender, PaintEventArgs e)
+		{
+
+		}
+
+		private void panel_stage5_Paint(object sender, PaintEventArgs e)
+		{
+
+		}
+
+		private void label_stage1Desc_Click(object sender, EventArgs e)
+		{
+
+		}
+
+		private void label_communityTitle_Click(object sender, EventArgs e)
+		{
+
 		}
 	}
 

@@ -34,6 +34,7 @@ namespace Crackdown_Installer
 		// if true, skips writing logs to log file on disk
 
 		private const string LOGFILE_NAME = "installer_log.txt";
+		private const string LOCAL_JSON_PATH = "cd_dependencies.json";
 
 		private const string DEPENDENCIES_JSON_URL = "https://raw.githubusercontent.com/Crackdown-PD2/deathvox/autoupdate/cd_dependencies.json";
 		private const string SUPERBLT_DLL_WSOCK32_URL = "https://sblt-update.znix.xyz/pd2update/updates/meta.php?id=payday2bltwsockdll"; // holds meta json info about dll updates
@@ -190,7 +191,7 @@ namespace Crackdown_Installer
 			if (DEBUG_LOCAL_JSON_HTTPREQ)
 #pragma warning disable CS0162 // Unreachable code detected
 			{
-				StreamReader sr = new("test.json");
+				StreamReader sr = new(LOCAL_JSON_PATH);
 				string jsonResponse = sr.ReadToEnd();
 				// create a throwaway temp element to hold the result of TryGetProperty()
 				JsonElement tempElement = new();
@@ -270,6 +271,7 @@ namespace Crackdown_Installer
 									queryUrl = PROVIDER_GITHUB_RELEASE_URL.Replace("$id$", uri);
 									try
 									{
+										LogMessage($"Sent req to {queryUrl}");
 										string jsonData = await AsyncJsonReq(queryUrl);
 
 										JsonDocument releaseData = JsonDocument.Parse(jsonData, DEFAULT_JSON_OPTIONS);
@@ -293,13 +295,11 @@ namespace Crackdown_Installer
 							{
 								if (isRelease)
 								{
-									//downloadUri = PROVIDER_GITLAB_COMMIT_URL;
-									//not currently supported
-									throw new Exception("Gitlab releases are not currently supported! Package name " + name);
+									downloadUrl = PROVIDER_GITLAB_RELEASE_URL.Replace("$id$", uri);
 								}
 								else
 								{
-									downloadUrl = PROVIDER_GITLAB_RELEASE_URL.Replace("$id$", uri);
+									downloadUrl = PROVIDER_GITLAB_DIRECT_URL.Replace("$id$", uri);
 								}
 							}
 							else if (provider == "direct")
@@ -757,7 +757,7 @@ namespace Crackdown_Installer
 				tempDirectoryInfo = Directory.CreateTempSubdirectory("crackdowninstaller_");
 				string tempDownloadsDirectory = tempDirectoryInfo.FullName;
 				Directory.Delete(tempDownloadsDirectory + @"\", true);
-				LogMessage("Downloads complete. Deleting " + tempDownloadsDirectory + ".");
+				LogMessage($"Downloads complete. Deleting {tempDownloadsDirectory}.");
 			}
 		}
 
@@ -792,31 +792,31 @@ namespace Crackdown_Installer
 			//info uri should have already been queried during dependency collection
 				//string branch = dependencyEntry.GetBranch();
 				//string uri = dependencyEntry.GetUri(); 
-			string directoryType = dependencyEntry.GetDefinitionType();
+			string definitionType = dependencyEntry.GetDefinitionType();
 			string downloadUri = dependencyEntry.GetDownloadUrl();
 			string directoryName = dependencyEntry.GetFileName();
 
 			//get final installation location
-			if (directoryType == "beardlib")
+			if (definitionType == "xml")
 			{
-				installDir = pd2InstallDirectory + "mods\\" + directoryName;
+				installDir = pd2InstallDirectory + @"mods\" + directoryName;
 			}
-			else if (directoryType == "blt")
+			else if (definitionType == "json")
 			{
-				installDir = pd2InstallDirectory + "mods\\" + directoryName;
+				installDir = pd2InstallDirectory + @"mods\" + directoryName;
 			}
-			else if (directoryType == "overrides")
+			else if (definitionType == "overrides")
 			{
-				installDir = pd2InstallDirectory + "assets\\mod_overrides\\" + directoryName;
+				installDir = pd2InstallDirectory + @"assets\mod_overrides\" + directoryName;
 			}
-			else if (directoryType == "file")
+			else if (definitionType == "file")
 			{
 				installDir = pd2InstallDirectory + directoryName;
 			}
 			else
 			{
-				//unknown install directory type!
-				LogMessage("Unknown installation type: [" + directoryType + "]");
+				//unknown install definition type!
+				LogMessage($"Unknown installation type: {definitionType}");
 				return "Bad dependency data";
 			}
 			string? errorMsg = await DownloadPackage(downloadDir, extractDir, downloadUri, installDir, callbackUpdateProgress);
@@ -1281,7 +1281,6 @@ namespace Crackdown_Installer
 		public void DisposeLogStreamWriter()
 		{
 			if (logStreamWriter != null) {
-				logStreamWriter.Flush();
 				logStreamWriter.Dispose();
 				logStreamWriter = null;
 			}
