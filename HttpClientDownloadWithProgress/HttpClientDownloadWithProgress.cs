@@ -6,7 +6,7 @@ namespace Crackdown_Installer
 
 	public class HttpClientDownloadWithProgress : IDisposable
 	{
-		private readonly string _downloadUrl;
+		private readonly HttpRequestMessage _sendMessage;
 		private readonly string _destinationFilePath;
 
 		private HttpClient _httpClient;
@@ -15,16 +15,16 @@ namespace Crackdown_Installer
 
 		public event ProgressChangedHandler? ProgressChanged;
 
-		public HttpClientDownloadWithProgress(HttpClient client, string downloadUrl, string destinationFilePath)
+		public HttpClientDownloadWithProgress(HttpClient client, HttpRequestMessage sendMessage, string destinationFilePath)
 		{
 			_httpClient = client;
-			_downloadUrl = downloadUrl;
+			_sendMessage = sendMessage;
 			_destinationFilePath = destinationFilePath;
 		}
 
 		public async Task StartDownload()
 		{
-			using (var response = await _httpClient.GetAsync(_downloadUrl, HttpCompletionOption.ResponseHeadersRead))
+			using (var response = await _httpClient.SendAsync(_sendMessage, HttpCompletionOption.ResponseHeadersRead))
 				await DownloadFileFromHttpResponseMessage(response);
 		}
 

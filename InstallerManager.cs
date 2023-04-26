@@ -45,6 +45,8 @@ namespace Crackdown_Installer
 		private const string PROVIDER_GITHUB_RELEASE_URL = "https://api.github.com/repos/$id$/releases/latest";
 		private const string PROVIDER_GITHUB_DIRECT_URL = "https://github.com/$id$/archive/$branch$.zip";
 
+		private const string PROVIDER_GITHUB_HEADER_USER_AGENT_VALUE = "CrackdownPD2";
+
 		//private const string PROVIDER_GITLAB_COMMIT_URL = "https://gitlab.com/api/v4/projects/$id$/repository/branches/$branch$"; // meta json info about latest commit in branch
 		private const string PROVIDER_GITLAB_RELEASE_URL = "https://gitlab.com/api/v4/projects/$id$/releases"; // direct latest release download
 		private const string PROVIDER_GITLAB_DIRECT_URL = "https://gitlab.com/api/v4/projects/$id$/repository/archive.zip"; // direct latest commit download 
@@ -272,7 +274,14 @@ namespace Crackdown_Installer
 									try
 									{
 										LogMessage($"Sent req to {queryUrl}");
-										string jsonData = await AsyncJsonReq(queryUrl);
+
+
+										HttpRequestMessage httpReqMessage = new HttpRequestMessage(HttpMethod.Get, queryUrl);
+										httpReqMessage.Headers.Add("User-Agent", PROVIDER_GITHUB_HEADER_USER_AGENT_VALUE);
+
+										HttpResponseMessage response = await httpClientInstance.SendAsync(httpReqMessage, HttpCompletionOption.ResponseHeadersRead);
+										response.EnsureSuccessStatusCode();
+										string jsonData = await response.Content.ReadAsStringAsync();
 
 										JsonDocument releaseData = JsonDocument.Parse(jsonData, DEFAULT_JSON_OPTIONS);
 										JsonElement secondaryRootElement = releaseData.RootElement;
@@ -790,8 +799,9 @@ namespace Crackdown_Installer
 			string installDir;
 
 			//info uri should have already been queried during dependency collection
-				//string branch = dependencyEntry.GetBranch();
-				//string uri = dependencyEntry.GetUri(); 
+			//string branch = dependencyEntry.GetBranch();
+			//string uri = dependencyEntry.GetUri(); 
+			string providerName = dependencyEntry.GetProvider();
 			string definitionType = dependencyEntry.GetDefinitionType();
 			string downloadUri = dependencyEntry.GetDownloadUrl();
 			string directoryName = dependencyEntry.GetFileName();
@@ -819,7 +829,14 @@ namespace Crackdown_Installer
 				LogMessage($"Unknown installation type: {definitionType}");
 				return "Bad dependency data";
 			}
-			string? errorMsg = await DownloadPackage(downloadDir, extractDir, downloadUri, installDir, callbackUpdateProgress);
+
+			HttpRequestMessage httpReqMessage = new HttpRequestMessage(HttpMethod.Get, downloadUri);
+			if (providerName == "github")
+			{
+				httpReqMessage.Headers.Add("User-Agent", PROVIDER_GITHUB_HEADER_USER_AGENT_VALUE);
+			}
+			
+			string? errorMsg = await DownloadPackage(downloadDir, extractDir, httpReqMessage, installDir, callbackUpdateProgress);
 
 			try
 			{
@@ -844,8 +861,10 @@ namespace Crackdown_Installer
 		/// <param name="siteUri"></param>
 		/// <param name="installFilePath"></param>
 		/// <returns></returns>
-		public async Task<string?> DownloadPackage(string downloadDir, string extractDir, string siteUri, string installFilePath, Action<double?,long,long?>? callbackUpdateProgress)
+		public async Task<string?> DownloadPackage(string downloadDir, string extractDir, HttpRequestMessage httpReqMessage, string installFilePath, Action<double?,long,long?>? callbackUpdateProgress)
 		{
+			string siteUri = httpReqMessage.RequestUri?.ToString() ?? "null"; // used for debug only
+
 			string downloadFileName = "tmp.zip";
 			string downloadFilePath = Path.Combine(downloadDir + downloadFileName);
 			//string extractDirName = "extract/";
@@ -864,7 +883,7 @@ namespace Crackdown_Installer
 			// send download req
 			try
 			{
-				using (var client = new HttpClientDownloadWithProgress(httpClientInstance, siteUri, downloadFilePath))
+				using (var client = new HttpClientDownloadWithProgress(httpClientInstance, httpReqMessage, downloadFilePath))
 				{
 					if (callbackUpdateProgress != null)
 					{
@@ -876,16 +895,11 @@ namespace Crackdown_Installer
 					}
 					await client.StartDownload();
 				}
-
-
-
 			}
 			catch (Exception e) {
 				LogMessage($"Download stream aborted due to an error: {e.Message}");
 				return "Could not download package";
 			}
-
-
 
 			LogMessage($"Unzipping {downloadFilePath} to {extractDir}...");
 
