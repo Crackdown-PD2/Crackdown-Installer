@@ -1321,7 +1321,7 @@ namespace Crackdown_Installer
 			{
 				try
 				{
-					await logFile.WriteAsync(s + "\n");
+					await logFile.WriteLineAsync(s);
 					await logFile.FlushAsync();
 				}
 				catch (Exception e)
