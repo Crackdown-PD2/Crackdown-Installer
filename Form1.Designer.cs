@@ -38,18 +38,18 @@
 			linkLabelDiscord = new LinkLabel();
 			linkLabelHomepage = new LinkLabel();
 			linkLabelWiki = new LinkLabel();
+			label_installPathTitle = new Label();
 			button_resetInstallPath = new Button();
 			button_browseInstallPath = new Button();
-			label_stage2Title = new Label();
 			label_stage1Desc = new Label();
 			label_browseInstallPathDesc = new Label();
 			label_stage1Title = new Label();
 			richTextBox_pd2InstallPath = new RichTextBox();
+			label_stage2Title = new Label();
 			button_quit = new Button();
 			folderBrowserDialog1 = new FolderBrowserDialog();
 			panel_stage2 = new Panel();
 			label_stage3Desc_2 = new Label();
-			label_stage3Title = new Label();
 			label_stage3_arrow = new Label();
 			label_stage3Desc = new Label();
 			panel_stage3_mouseoverDesc = new Panel();
@@ -59,6 +59,7 @@
 			button_detectExistingMods = new Button();
 			label_missingModsList = new Label();
 			checkedListBox_dummyInstalledMods = new CheckedListBox();
+			label_stage3Title = new Label();
 			progressBar_downloadIndividual = new ProgressBar();
 			listBox_downloadList = new ListBox();
 			label_downloadStatusDesc = new Label();
@@ -80,7 +81,8 @@
 			label_endDesc = new Label();
 			label_endTitle = new Label();
 			panel_stage4 = new Panel();
-			label_installPathTitle = new Label();
+			linkLabelTroubleshooting = new LinkLabel();
+			listBox_downloadFailedList = new ListBox();
 			panel_stage1.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
 			splitContainer1.Panel1.SuspendLayout();
@@ -202,6 +204,16 @@
 			linkLabelWiki.Text = "Crackdown Mod Wiki";
 			linkLabelWiki.LinkClicked += linkLabelWiki_LinkClicked;
 			// 
+			// label_installPathTitle
+			// 
+			label_installPathTitle.AutoSize = true;
+			label_installPathTitle.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
+			label_installPathTitle.Location = new Point(39, 158);
+			label_installPathTitle.Name = "label_installPathTitle";
+			label_installPathTitle.Size = new Size(174, 15);
+			label_installPathTitle.TabIndex = 4;
+			label_installPathTitle.Text = "PAYDAY 2 Installation Location";
+			// 
 			// button_resetInstallPath
 			// 
 			button_resetInstallPath.Anchor = AnchorStyles.None;
@@ -223,17 +235,6 @@
 			button_browseInstallPath.Text = "Browse...";
 			button_browseInstallPath.UseVisualStyleBackColor = true;
 			button_browseInstallPath.Click += button_browseInstallPath_Click;
-			// 
-			// label_stage2Title
-			// 
-			label_stage2Title.Anchor = AnchorStyles.None;
-			label_stage2Title.AutoSize = true;
-			label_stage2Title.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
-			label_stage2Title.Location = new Point(18, 12);
-			label_stage2Title.Name = "label_stage2Title";
-			label_stage2Title.Size = new Size(96, 15);
-			label_stage2Title.TabIndex = 10;
-			label_stage2Title.Text = "Select Packages";
 			// 
 			// label_stage1Desc
 			// 
@@ -285,10 +286,21 @@
 			richTextBox_pd2InstallPath.WordWrap = false;
 			richTextBox_pd2InstallPath.TextChanged += richTextBox1_TextChanged;
 			// 
+			// label_stage2Title
+			// 
+			label_stage2Title.Anchor = AnchorStyles.None;
+			label_stage2Title.AutoSize = true;
+			label_stage2Title.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
+			label_stage2Title.Location = new Point(18, 12);
+			label_stage2Title.Name = "label_stage2Title";
+			label_stage2Title.Size = new Size(96, 15);
+			label_stage2Title.TabIndex = 10;
+			label_stage2Title.Text = "Select Packages";
+			// 
 			// button_quit
 			// 
 			button_quit.Anchor = AnchorStyles.None;
-			button_quit.Location = new Point(542, 7);
+			button_quit.Location = new Point(542, 5);
 			button_quit.Name = "button_quit";
 			button_quit.Size = new Size(80, 28);
 			button_quit.TabIndex = 2;
@@ -333,17 +345,6 @@
 			label_stage3Desc_2.Size = new Size(600, 18);
 			label_stage3Desc_2.TabIndex = 17;
 			label_stage3Desc_2.Text = "Select which files to download and install, then click \"Next\".";
-			// 
-			// label_stage3Title
-			// 
-			label_stage3Title.AutoSize = true;
-			label_stage3Title.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
-			label_stage3Title.Location = new Point(14, 16);
-			label_stage3Title.Name = "label_stage3Title";
-			label_stage3Title.Size = new Size(117, 15);
-			label_stage3Title.TabIndex = 16;
-			label_stage3Title.Text = "Download Packages";
-			label_stage3Title.Click += label_stage3Title_Click;
 			// 
 			// label_stage3_arrow
 			// 
@@ -442,6 +443,17 @@
 			checkedListBox_dummyInstalledMods.TabIndex = 17;
 			checkedListBox_dummyInstalledMods.Visible = false;
 			// 
+			// label_stage3Title
+			// 
+			label_stage3Title.AutoSize = true;
+			label_stage3Title.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
+			label_stage3Title.Location = new Point(14, 16);
+			label_stage3Title.Name = "label_stage3Title";
+			label_stage3Title.Size = new Size(117, 15);
+			label_stage3Title.TabIndex = 16;
+			label_stage3Title.Text = "Download Packages";
+			label_stage3Title.Click += label_stage3Title_Click;
+			// 
 			// progressBar_downloadIndividual
 			// 
 			progressBar_downloadIndividual.Location = new Point(14, 263);
@@ -497,7 +509,7 @@
 			// 
 			button_prevStage.Anchor = AnchorStyles.None;
 			button_prevStage.FlatStyle = FlatStyle.System;
-			button_prevStage.Location = new Point(380, 7);
+			button_prevStage.Location = new Point(380, 5);
 			button_prevStage.Name = "button_prevStage";
 			button_prevStage.Size = new Size(74, 28);
 			button_prevStage.TabIndex = 8;
@@ -508,7 +520,7 @@
 			// button_nextStage
 			// 
 			button_nextStage.Anchor = AnchorStyles.None;
-			button_nextStage.Location = new Point(460, 7);
+			button_nextStage.Location = new Point(460, 5);
 			button_nextStage.Name = "button_nextStage";
 			button_nextStage.Size = new Size(76, 28);
 			button_nextStage.TabIndex = 9;
@@ -527,9 +539,9 @@
 			panel_navigation.Controls.Add(button_nextStage);
 			panel_navigation.Controls.Add(button_prevStage);
 			panel_navigation.Dock = DockStyle.Bottom;
-			panel_navigation.Location = new Point(0, 317);
+			panel_navigation.Location = new Point(0, 321);
 			panel_navigation.Name = "panel_navigation";
-			panel_navigation.Size = new Size(632, 44);
+			panel_navigation.Size = new Size(632, 40);
 			panel_navigation.TabIndex = 10;
 			panel_navigation.Paint += panel4_Paint;
 			// 
@@ -537,7 +549,7 @@
 			// 
 			label_navigation_stage4.AutoSize = true;
 			label_navigation_stage4.ForeColor = SystemColors.ControlDark;
-			label_navigation_stage4.Location = new Point(305, 16);
+			label_navigation_stage4.Location = new Point(305, 13);
 			label_navigation_stage4.Name = "label_navigation_stage4";
 			label_navigation_stage4.Size = new Size(38, 15);
 			label_navigation_stage4.TabIndex = 13;
@@ -547,7 +559,7 @@
 			// 
 			label_navigation_stage3.AutoSize = true;
 			label_navigation_stage3.ForeColor = SystemColors.ControlDark;
-			label_navigation_stage3.Location = new Point(175, 16);
+			label_navigation_stage3.Location = new Point(175, 13);
 			label_navigation_stage3.Name = "label_navigation_stage3";
 			label_navigation_stage3.Size = new Size(124, 15);
 			label_navigation_stage3.TabIndex = 12;
@@ -557,7 +569,7 @@
 			// 
 			label_navigation_stage2.AutoSize = true;
 			label_navigation_stage2.ForeColor = SystemColors.ControlDark;
-			label_navigation_stage2.Location = new Point(68, 16);
+			label_navigation_stage2.Location = new Point(68, 13);
 			label_navigation_stage2.Name = "label_navigation_stage2";
 			label_navigation_stage2.Size = new Size(101, 15);
 			label_navigation_stage2.TabIndex = 11;
@@ -566,7 +578,7 @@
 			// label_navigation_stage1
 			// 
 			label_navigation_stage1.AutoSize = true;
-			label_navigation_stage1.Location = new Point(20, 16);
+			label_navigation_stage1.Location = new Point(20, 13);
 			label_navigation_stage1.Name = "label_navigation_stage1";
 			label_navigation_stage1.Size = new Size(42, 15);
 			label_navigation_stage1.TabIndex = 10;
@@ -576,7 +588,7 @@
 			// 
 			button_openTempFolder.Anchor = AnchorStyles.None;
 			button_openTempFolder.FlatStyle = FlatStyle.Popup;
-			button_openTempFolder.Location = new Point(472, 281);
+			button_openTempFolder.Location = new Point(460, 140);
 			button_openTempFolder.Name = "button_openTempFolder";
 			button_openTempFolder.Size = new Size(154, 28);
 			button_openTempFolder.TabIndex = 4;
@@ -596,7 +608,7 @@
 			// 
 			// button_finishAndLaunch
 			// 
-			button_finishAndLaunch.Location = new Point(303, 219);
+			button_finishAndLaunch.Location = new Point(162, 269);
 			button_finishAndLaunch.Name = "button_finishAndLaunch";
 			button_finishAndLaunch.Size = new Size(216, 28);
 			button_finishAndLaunch.TabIndex = 6;
@@ -617,7 +629,7 @@
 			// 
 			// button_finalQuit
 			// 
-			button_finalQuit.Location = new Point(185, 219);
+			button_finalQuit.Location = new Point(66, 269);
 			button_finalQuit.Name = "button_finalQuit";
 			button_finalQuit.Size = new Size(90, 28);
 			button_finalQuit.TabIndex = 5;
@@ -628,27 +640,30 @@
 			// label_endDesc
 			// 
 			label_endDesc.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-			label_endDesc.Location = new Point(3, 115);
+			label_endDesc.Location = new Point(2, 56);
 			label_endDesc.Name = "label_endDesc";
-			label_endDesc.Size = new Size(623, 48);
+			label_endDesc.Size = new Size(628, 18);
 			label_endDesc.TabIndex = 1;
-			label_endDesc.Text = "Installation complete. You can now launch PAYDAY 2 and play the Crackdown Mod!";
+			label_endDesc.Text = "You can now launch PAYDAY 2 and play the Crackdown Mod!";
 			label_endDesc.TextAlign = ContentAlignment.TopCenter;
 			// 
 			// label_endTitle
 			// 
 			label_endTitle.Anchor = AnchorStyles.None;
-			label_endTitle.Font = new Font("Segoe UI", 20.25F, FontStyle.Regular, GraphicsUnit.Point);
-			label_endTitle.Location = new Point(3, 38);
+			label_endTitle.Font = new Font("Segoe UI", 15.75F, FontStyle.Bold, GraphicsUnit.Point);
+			label_endTitle.Location = new Point(2, 19);
 			label_endTitle.Name = "label_endTitle";
-			label_endTitle.Size = new Size(629, 37);
+			label_endTitle.Size = new Size(628, 36);
 			label_endTitle.TabIndex = 0;
 			label_endTitle.Text = "Installation Complete";
 			label_endTitle.TextAlign = ContentAlignment.TopCenter;
+			label_endTitle.Click += label_endTitle_Click;
 			// 
 			// panel_stage4
 			// 
 			panel_stage4.BackColor = SystemColors.Control;
+			panel_stage4.Controls.Add(linkLabelTroubleshooting);
+			panel_stage4.Controls.Add(listBox_downloadFailedList);
 			panel_stage4.Controls.Add(button_finalQuit);
 			panel_stage4.Controls.Add(button_openTempFolder);
 			panel_stage4.Controls.Add(label_endTitle);
@@ -660,15 +675,27 @@
 			panel_stage4.TabIndex = 15;
 			panel_stage4.Visible = false;
 			// 
-			// label_installPathTitle
+			// linkLabelTroubleshooting
 			// 
-			label_installPathTitle.AutoSize = true;
-			label_installPathTitle.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
-			label_installPathTitle.Location = new Point(39, 158);
-			label_installPathTitle.Name = "label_installPathTitle";
-			label_installPathTitle.Size = new Size(174, 15);
-			label_installPathTitle.TabIndex = 4;
-			label_installPathTitle.Text = "PAYDAY 2 Installation Location";
+			linkLabelTroubleshooting.AutoSize = true;
+			linkLabelTroubleshooting.Location = new Point(30, 217);
+			linkLabelTroubleshooting.Name = "linkLabelTroubleshooting";
+			linkLabelTroubleshooting.Size = new Size(126, 15);
+			linkLabelTroubleshooting.TabIndex = 17;
+			linkLabelTroubleshooting.TabStop = true;
+			linkLabelTroubleshooting.Text = "Troubleshooting guide";
+			linkLabelTroubleshooting.LinkClicked += linkLabelTroubleshooting_LinkClicked;
+			// 
+			// listBox_downloadFailedList
+			// 
+			listBox_downloadFailedList.Anchor = AnchorStyles.None;
+			listBox_downloadFailedList.FormattingEnabled = true;
+			listBox_downloadFailedList.ItemHeight = 15;
+			listBox_downloadFailedList.Items.AddRange(new object[] { "There were no installation errors." });
+			listBox_downloadFailedList.Location = new Point(29, 105);
+			listBox_downloadFailedList.Name = "listBox_downloadFailedList";
+			listBox_downloadFailedList.Size = new Size(400, 109);
+			listBox_downloadFailedList.TabIndex = 7;
 			// 
 			// Form1
 			// 
@@ -708,6 +735,7 @@
 			panel_stage5.ResumeLayout(false);
 			panel_stage5.PerformLayout();
 			panel_stage4.ResumeLayout(false);
+			panel_stage4.PerformLayout();
 			ResumeLayout(false);
 		}
 
@@ -765,5 +793,7 @@
 		private Label label_stage1Desc;
 		private Label label_stage3Desc_2;
 		private Label label_installPathTitle;
+		private ListBox listBox_downloadFailedList;
+		private LinkLabel linkLabelTroubleshooting;
 	}
 }

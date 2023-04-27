@@ -30,6 +30,8 @@ namespace Crackdown_Installer
 		const string INSTALL_STATUS_FAILED = "Failed ($reason$)";
 		const string INSTALL_STATUS_INPROGRESS = "In progress";
 		const string STAGE_DESC_ALL_ALREADY_INSTALLED = "You already have all Crackdown packages installed and up-to-date!";
+		const string END_DOWNLOAD_ERRORS_TITLE = "Installation Failed";
+		const string END_DOWNLOAD_ERRORS_DESC = "One or more errors were detected.";
 
 		/*
 		readonly string[] DUCKSOUNDS = {
@@ -95,11 +97,11 @@ namespace Crackdown_Installer
 			// disable "next stage" button when there are no items selected
 			void OnItemCheckChanged(object? sender, ItemCheckEventArgs e)
 			{
-				CheckedListBoxDisabledItems send = (CheckedListBoxDisabledItems)sender;
+				CheckedListBoxDisabledItems? send = sender as CheckedListBoxDisabledItems;
 
 				// evaluate true number of checked items
 				// since this event is run before the checked items count is updated
-				int count = send.CheckedItems.Count;
+				int count = send?.CheckedItems.Count ?? 0;
 				if (e.NewValue == CheckState.Unchecked)
 				{
 					count--;
@@ -183,10 +185,10 @@ namespace Crackdown_Installer
 					// find out if this dependency is already installed or not;
 					// dependencyType indicates which definition file we use to identify a dependency as being installed or not
 					// (searching for an exact name inside a given definition file)
+					LogMessage($"Looking for installed {dependencyType} mod {dependencyName}");
 					if (dependencyType == "json")
 					{
 						// use json definition
-						LogMessage("Looking for installed mod " + dependencyName);
 						modFolder = InstallerWrapper.GetBltMod(dependencyName);
 						isDependencyInstalled = modFolder != null;
 					}
@@ -311,6 +313,7 @@ namespace Crackdown_Installer
 					}
 				}
 
+				LogMessage($"Is installed: {isDependencyInstalled}");
 
 				if (!ignoreThisDependency)
 				{
@@ -635,20 +638,25 @@ namespace Crackdown_Installer
 
 		private void CallbackOnDownloadDependenciesComplete(List<DependencyDownloadResult> downloadResults)
 		{
-			//listBox_downloadList.Items.Clear();
-			/*
-			foreach (DependencyDownloadResult downloadResult in downloadResults)
+
+			//listBox_downloadFailedList.Visible = true;
+			if (downloadResults.Count > 0)
 			{
-				ModDependencyEntry entry = downloadResult.entry;
-				//				string name = entry.GetName();
-				//				string result = GetDownloadSpacerString(name, INSTALL_STATUS_PENDING);
-				//				string message = downloadResult.message;
-				//				int messageLen = message.Length;
-				//				listBox_downloadList.Items.Add(result);
+				listBox_downloadFailedList.Items.Clear();
+				foreach (DependencyDownloadResult downloadResult in downloadResults)
+				{
+					ModDependencyEntry entry = downloadResult.entry;
+					string name = entry.GetName();
+					string result = GetDownloadSpacerString(name, INSTALL_STATUS_PENDING);
+					string message = downloadResult.message;
+					int messageLen = message.Length;
+					listBox_downloadFailedList.Items.Add(result);
+				}
+				label_downloadStatusDesc.Text = INSTALL_STATUS_DONE;
+				//button_nextStage.Enabled = true;
+				label_endTitle.Text = END_DOWNLOAD_ERRORS_TITLE;
+				label_endDesc.Text = END_DOWNLOAD_ERRORS_DESC;
 			}
-			*/
-			label_downloadStatusDesc.Text = INSTALL_STATUS_DONE;
-			button_nextStage.Enabled = true;
 		}
 
 		private async Task<List<DependencyDownloadResult>> DownloadSelectedDependencies()
@@ -779,6 +787,11 @@ namespace Crackdown_Installer
 			InstallerWrapper.BrowserOpenWiki();
 		}
 
+		private void linkLabelTroubleshooting_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+		{
+			InstallerWrapper.BrowserOpenInstructions();
+		}
+
 		private void Form1_Load(object sender, EventArgs e)
 		{ }
 
@@ -893,21 +906,18 @@ namespace Crackdown_Installer
 		}
 
 		private void splitContainer1_Panel2_Paint(object sender, PaintEventArgs e)
-		{
-
-		}
+		{ }
 
 		private void panel_stage5_Paint(object sender, PaintEventArgs e)
-		{
-
-		}
+		{ }
 
 		private void label_stage1Desc_Click(object sender, EventArgs e)
-		{
-
-		}
+		{ }
 
 		private void label_communityTitle_Click(object sender, EventArgs e)
+		{ }
+
+		private void label_endTitle_Click(object sender, EventArgs e)
 		{
 
 		}

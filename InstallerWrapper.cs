@@ -12,6 +12,7 @@ namespace Crackdown_Installer
 		const string URL_CRACKDOWN_DISCORD = "https://discord.gg/dak2zQ2";
 		const string URL_CRACKDOWN_HOMEPAGE = "http://crackdownmod.com/";
 		const string URL_CRACKDOWN_WIKI = "https://totalcrackdown.wiki.gg/";
+		const string URL_CRACKDOWN_INSTRUCTIONS = "https://github.com/Crackdown-PD2/Crackdown-Installer";
 
 		/// <summary>
 		///  The main entry point for the application.
@@ -41,9 +42,17 @@ namespace Crackdown_Installer
 			// see https://aka.ms/applicationconfiguration.
 			ApplicationConfiguration.Initialize();
 
+			Application.ThreadException += Application_ThreadException;
+
 			Application.ApplicationExit += new EventHandler(OnApplicationExit);
 
 			Application.Run(new Form1());
+		}
+
+		private static void Application_ThreadException(object sender, ThreadExceptionEventArgs e)
+		{
+			LogMessage($"Application has crashed (unhandled exception): {e.Exception.Message}");
+			Application.Exit();
 		}
 
 		/// <summary>
@@ -216,6 +225,7 @@ namespace Crackdown_Installer
 		{
 			OpenWebLink(URL_CRACKDOWN_DISCORD);
 		}
+		
 		public static void BrowserOpenHomepage()
 		{
 			OpenWebLink(URL_CRACKDOWN_HOMEPAGE);
@@ -224,6 +234,11 @@ namespace Crackdown_Installer
 		public static void BrowserOpenWiki()
 		{
 			OpenWebLink(URL_CRACKDOWN_WIKI);
+		}
+
+		public static void BrowserOpenInstructions()
+		{
+			OpenWebLink(URL_CRACKDOWN_INSTRUCTIONS);
 		}
 
 		public static string? GetPreferredBrowser()

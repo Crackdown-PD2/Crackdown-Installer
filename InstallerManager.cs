@@ -16,7 +16,7 @@ namespace Crackdown_Installer
 		// if true, allows file downloads to replace existing files by the same name.
 		// must be enabled to allow updating existing mods
 
-		private const bool DEBUG_LOCAL_JSON_HTTPREQ = true;
+		private const bool DEBUG_LOCAL_JSON_HTTPREQ = false;
 		//if true, skips sending an http req for the json file,
 		//and reads a local json file instead.
 
@@ -63,6 +63,10 @@ namespace Crackdown_Installer
 		private const string STEAM_LIBRARY_MANIFEST_PATH = @"%%STEAM%%\steamapps\libraryfolders.vdf";
 
 		private const string PD2_APPID = "218620"; // Steam appid for PAYDAY 2
+
+		const string ERROR_UNZIP_FAILED = "Could not extract package archive";
+		const string ERROR_DOWNLOAD_FAILED = "Could not download package";
+		const string ERROR_MOVE_FAILED = "Could not move package file(s)";
 
 		private string? steamInstallDirectory;
 		private string? pd2InstallDirectory;
@@ -188,13 +192,26 @@ namespace Crackdown_Installer
 				LogMessage("Error getting update data for SuperBLT dll file",e);
 			}
 
+			string jsonResponse;
 
-			ModDependencyList item;
 			if (DEBUG_LOCAL_JSON_HTTPREQ)
-#pragma warning disable CS0162 // Unreachable code detected
 			{
-				StreamReader sr = new(LOCAL_JSON_PATH);
-				string jsonResponse = sr.ReadToEnd();
+				LogMessage("Reading dependency from local debug copy.");
+				using (var sr = new StreamReader(LOCAL_JSON_PATH))
+				{
+					jsonResponse = sr.ReadToEnd();
+				}
+			}
+			else
+			{
+				// Send a query to the Crackdown updates repo
+				// to get a list of packages that Crackdown uses
+				jsonResponse = await AsyncJsonReq(DEPENDENCIES_JSON_URL);
+				LogMessage("Received dependency manifest response from server.");
+			}
+#pragma warning disable CS0162 // Unreachable code detected
+			if (jsonResponse != null)
+			{
 				// create a throwaway temp element to hold the result of TryGetProperty()
 				JsonElement tempElement = new();
 				int currentInstallerVersion = InstallerWrapper.GetInstallerVersion();
@@ -289,7 +306,7 @@ namespace Crackdown_Installer
 									}
 									catch (Exception e)
 									{
-										LogMessage("Failed getting url from github provider, package " + name,e);
+										LogMessage($"Failed getting url from github provider, package [{name}]: {e.Message}");
 									}
 								}
 								else
@@ -323,13 +340,13 @@ namespace Crackdown_Installer
 							}
 							else if (provider == "modworkshop")
 							{
-								throw new Exception("ModWorkshop releases are not currently supported! Package name " + name);
+								throw new Exception($"ModWorkshop releases are not currently supported! Package name [{name}]!");
 								//not yet supported
 							}
 							else
 							{
 								//unknown provider type
-								throw new Exception("Unknown provider type! Package name " + name);
+								throw new Exception($"Unknown provider type for package [{name}]!");
 							}
 
 							ModDependencyEntry dependencyEntry = new ModDependencyEntry(
@@ -368,16 +385,7 @@ namespace Crackdown_Installer
 			}
 			else
 			{
-				/// Send a query to the Crackdown updates repo
-				/// to get a list of packages that Crackdown uses
-				string jsonResponse = await AsyncJsonReq(DEPENDENCIES_JSON_URL);
-
-				//ModDependencyList item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
-				item = JsonSerializer.Deserialize<ModDependencyList>(jsonResponse);
-				foreach (ModDependencyEntry entry in item.Response)
-				{
-					result.Add(entry);
-				}
+				throw new Exception("Bad dependency manifest! Could not complete installation.");
 			}
 
 			dependenciesFromServer = result;
@@ -898,8 +906,9 @@ namespace Crackdown_Installer
 			}
 			catch (Exception e) {
 				LogMessage($"Download stream aborted due to an error: {e.Message}");
-				return "Could not download package";
+				return ERROR_DOWNLOAD_FAILED;
 			}
+
 
 			LogMessage($"Unzipping {downloadFilePath} to {extractDir}...");
 
@@ -910,14 +919,14 @@ namespace Crackdown_Installer
 			catch (Exception e)
 			{
 				LogMessage($"Extraction aborted due to an error: {e.Message}");
-				return "Could not unzip downloaded archive";
+				return ERROR_UNZIP_FAILED;
 			}
 
 			//attempt to find downloaded folder first
 			foreach (string entryName in Directory.EnumerateDirectories(extractDir, "*", System.IO.SearchOption.TopDirectoryOnly))
 			{
 
-				LogMessage($"Moving {entryName} to {installFilePath}...");
+				LogMessage($"Moving folder {entryName} to {installFilePath}...");
 				if (!DEBUG_NO_FILE_INSTALL)
 				{
 					try
@@ -930,7 +939,7 @@ namespace Crackdown_Installer
 					catch (Exception e)
 					{
 						LogMessage($"Installation aborted due to an error: {e.Message}");
-						return "Could not move downloaded package";
+						return ERROR_MOVE_FAILED;
 					}
 				}
 				else
@@ -942,7 +951,7 @@ namespace Crackdown_Installer
 			//then try to find downloaded files
 			foreach (string entryName in Directory.EnumerateFiles(extractDir, "*", System.IO.SearchOption.TopDirectoryOnly))
 			{
-				LogMessage($"Moving {entryName} to {installFilePath}...");
+				LogMessage($"Moving file {entryName} to {installFilePath}...");
 				if (!DEBUG_NO_FILE_INSTALL)
 				{
 					try
@@ -955,7 +964,7 @@ namespace Crackdown_Installer
 					catch (Exception e)
 					{
 						LogMessage($"Installation aborted due to an error: {e.Message}");
-						return "Could not move downloaded package";
+						return ERROR_MOVE_FAILED;
 					}
 				}
 				else
@@ -963,7 +972,6 @@ namespace Crackdown_Installer
 					LogMessage("[debug] Pretended to move unzipped download into final installation location but didn't actually");
 				}
 			}
-
 
 			// log the hash of the downloaded archive to the debug log
 			try
