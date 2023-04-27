@@ -1314,15 +1314,15 @@ namespace Crackdown_Installer
 			}
 		}
 
-		public async void WriteLogMessage(string s)
+		public void WriteLogMessage(string s)
 		{
 			StreamWriter? logFile = logStreamWriter;
 			if (logFile != null)
 			{
 				try
 				{
-					await logFile.WriteLineAsync(s);
-					await logFile.FlushAsync();
+					logFile.WriteLine(s);
+					logFile.Flush();
 				}
 				catch (Exception e)
 				{
