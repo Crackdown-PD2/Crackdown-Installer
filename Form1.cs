@@ -28,6 +28,7 @@ namespace Crackdown_Installer
 		const string DEPENDENCY_ALREADY_INSTALLED = "This mod has been installed and is up to date.";
 		const string INSTALL_STATUS_PENDING = "Pending";
 		const string INSTALL_STATUS_DONE = "Done";
+		const string INSTALL_STATUS_SUCCESS = "Installed";
 		const string INSTALL_STATUS_FAILED = "Failed ($reason$)";
 		const string INSTALL_STATUS_INPROGRESS = "In progress";
 		const string STAGE_DESC_ALL_ALREADY_INSTALLED = "You already have all Crackdown packages installed and up-to-date!";
@@ -281,6 +282,7 @@ namespace Crackdown_Installer
 						}
 
 						dependencyExistingNeedsUpdate = dependencyHash != currentHash;
+						LogMessage($"Version check (hash): {dependencyHash} ?=  {currentHash} ?");
 					}
 					else
 					{
@@ -307,9 +309,12 @@ namespace Crackdown_Installer
 							// compare version (or hash) here
 							currentVersion = definitionFile.GetVersion();
 							dependencyExistingNeedsUpdate = currentVersion != dependencyVersionId;
+
+							LogMessage($"Version check: {currentVersion} ?=  {dependencyVersionId} ?");
 						}
 					}
 				}
+
 
 				LogMessage($"Is installed: {isDependencyInstalled}");
 
@@ -687,25 +692,30 @@ namespace Crackdown_Installer
 
 		private void CallbackOnDownloadDependenciesComplete(List<DependencyDownloadResult> downloadResults)
 		{
-
+			LogMessage($"All downloads complete. Num results: {downloadResults?.Count ?? -1}");
 			//listBox_downloadFailedList.Visible = true;
-			if (downloadResults.Count > 0)
+			if (downloadResults?.Count > 0)
 			{
+				bool failedAny = false;
 				listBox_downloadFailedList.Items.Clear();
 				foreach (DependencyDownloadResult downloadResult in downloadResults)
 				{
 					ModDependencyEntry entry = downloadResult.entry;
 					string name = entry.GetName();
-					string result = GetDownloadSpacerString(name, INSTALL_STATUS_PENDING);
 					string message = downloadResult.message;
+					string result = GetDownloadSpacerString(name, message);
 					int messageLen = message.Length;
 					listBox_downloadFailedList.Items.Add(result);
 				}
-				label_downloadStatusDesc.Text = INSTALL_STATUS_DONE;
-				//button_nextStage.Enabled = true;
-				label_endTitle.Text = END_DOWNLOAD_ERRORS_TITLE;
-				label_endDesc.Text = END_DOWNLOAD_ERRORS_DESC;
+
+				if (failedAny)
+				{
+					label_downloadStatusDesc.Text = INSTALL_STATUS_DONE;
+					label_endTitle.Text = END_DOWNLOAD_ERRORS_TITLE;
+					label_endDesc.Text = END_DOWNLOAD_ERRORS_DESC;
+				}
 			}
+			button_nextStage.Enabled = true;
 		}
 
 		private async Task<List<DependencyDownloadResult>> DownloadSelectedDependencies()
@@ -750,7 +760,7 @@ namespace Crackdown_Installer
 					listBox_downloadList.Items.RemoveAt(i);
 					listBox_downloadList.Items.Insert(i, GetDownloadSpacerString(entryName, INSTALL_STATUS_DONE));
 
-					downloadResults.Add(new DependencyDownloadResult(true, dependencyEntry, INSTALL_STATUS_DONE));
+					downloadResults.Add(new DependencyDownloadResult(true, dependencyEntry, INSTALL_STATUS_SUCCESS));
 					LogMessage("Download success");
 				}
 

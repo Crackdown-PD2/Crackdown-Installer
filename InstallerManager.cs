@@ -4,6 +4,7 @@ using System.Xml;
 using Microsoft.Win32;
 using ZNix.SuperBLT;
 using VDF; //Valve Data Format parser 
+using System.Drawing.Text;
 
 //Stores result data from installation file operations
 //such as finding/hashing installed mods, querying required dependencies from the server
@@ -72,6 +73,8 @@ namespace Crackdown_Installer
 		private string? pd2InstallDirectory;
 
 		private bool useAlternateDll = false;
+
+		private int counterDownloadedItems = 0;
 
 		private DirectoryInfo? tempDirectoryInfo;
 
@@ -206,6 +209,7 @@ namespace Crackdown_Installer
 			{
 				// Send a query to the Crackdown updates repo
 				// to get a list of packages that Crackdown uses
+				LogMessage($"Querying {DEPENDENCIES_JSON_URL}");
 				jsonResponse = await AsyncJsonReq(DEPENDENCIES_JSON_URL);
 				LogMessage("Received dependency manifest response from server.");
 			}
@@ -788,14 +792,19 @@ namespace Crackdown_Installer
 			}
 		}
 
-
 		public async Task<string?> DownloadDependency(ModDependencyEntry dependencyEntry, Action<double?, long, long?>? callbackUpdateProgress) {
 			if (tempDirectoryInfo == null) {
 				throw new Exception("Error: No temp directory found! Could not download dependency.");
 			}
 			string downloadDir = tempDirectoryInfo.FullName;
-
-			string extractDirName = @"extract\";
+			string directoryName = dependencyEntry.GetFileName();
+			string extractDirName = directoryName;
+			string downloadFileName = ++counterDownloadedItems + ".zip";
+			LogMessage("Downloading " + downloadFileName);
+			if (!extractDirName.EndsWith(@"\"))
+			{
+				extractDirName = extractDirName + @"\";
+			}
 			tempDirectoryInfo.CreateSubdirectory(extractDirName);
 			string extractDir = Path.Combine(downloadDir,extractDirName);
 
@@ -807,7 +816,6 @@ namespace Crackdown_Installer
 			string providerName = dependencyEntry.GetProvider();
 			string definitionType = dependencyEntry.GetDefinitionType();
 			string downloadUri = dependencyEntry.GetDownloadUrl();
-			string directoryName = dependencyEntry.GetFileName();
 
 			//get final installation location
 			if (definitionType == "xml")
@@ -839,17 +847,7 @@ namespace Crackdown_Installer
 				httpReqMessage.Headers.Add("User-Agent", PROVIDER_GITHUB_HEADER_USER_AGENT_VALUE);
 			}
 			
-			string? errorMsg = await DownloadPackage(downloadDir, extractDir, httpReqMessage, installDir, callbackUpdateProgress);
-
-			try
-			{
-				//TODO System.IO.Directory.Delete(extractDir, true); //delete temp extract folder
-			}
-			catch (Exception e)
-			{
-				LogMessage($"Warning: unable to delete temp extract folder: {e.Message}");
-			}
-
+			string? errorMsg = await DownloadPackage(downloadDir, downloadFileName, extractDir, httpReqMessage, installDir, callbackUpdateProgress);
 
 			return errorMsg;
 		}
@@ -864,12 +862,11 @@ namespace Crackdown_Installer
 		/// <param name="siteUri"></param>
 		/// <param name="installFilePath"></param>
 		/// <returns></returns>
-		public async Task<string?> DownloadPackage(string downloadDir, string extractDir, HttpRequestMessage httpReqMessage, string installFilePath, Action<double?,long,long?>? callbackUpdateProgress)
+		public async Task<string?> DownloadPackage(string downloadDir, string downloadFileName, string extractDir, HttpRequestMessage httpReqMessage, string installFilePath, Action<double?,long,long?>? callbackUpdateProgress)
 		{
 			string siteUri = httpReqMessage.RequestUri?.ToString() ?? "null"; // used for debug only
 
-			string downloadFileName = "tmp.zip";
-			string downloadFilePath = Path.Combine(downloadDir + downloadFileName);
+			string downloadFilePath = Path.Combine(downloadDir,downloadFileName);
 			//string extractDirName = "extract/";
 			//string extractDirPath = Path.Combine(downloadDir, extractDirName);
 
@@ -881,7 +878,7 @@ namespace Crackdown_Installer
 				return null;
 			}
 
-			LogMessage("Downloading: " + siteUri + " to " + downloadDir + "...");
+			LogMessage("Downloading: " + siteUri + " to " + downloadDir);
 
 			// send download req
 			try
@@ -920,7 +917,6 @@ namespace Crackdown_Installer
 			//attempt to find downloaded folder first
 			foreach (string entryName in Directory.EnumerateDirectories(extractDir, "*", System.IO.SearchOption.TopDirectoryOnly))
 			{
-
 				LogMessage($"Moving folder {entryName} to {installFilePath}...");
 				if (!DEBUG_NO_FILE_INSTALL)
 				{
@@ -977,14 +973,6 @@ namespace Crackdown_Installer
 			catch (IOException e)
 			{
 				LogMessage($"Could not read the downloaded package file/folder: {e.Message}");
-			}
-
-			try {
-				System.IO.File.Delete(downloadFilePath); //delete tmp zip file
-			}
-			catch (Exception e)
-			{
-				LogMessage($"Warning: unable to delete downloaded dependency archive file: {e.Message}");
 			}
 
 			//success; do not return an error message
