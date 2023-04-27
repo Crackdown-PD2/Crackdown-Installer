@@ -192,7 +192,7 @@ namespace Crackdown_Installer
 				LogMessage("Error getting update data for SuperBLT dll file",e);
 			}
 
-			string jsonResponse;
+			string? jsonResponse = null;
 
 			if (DEBUG_LOCAL_JSON_HTTPREQ)
 			{
@@ -225,15 +225,18 @@ namespace Crackdown_Installer
 						documentVersion = tempElement.GetInt32();
 						if (documentVersion == currentInstallerVersion) {
 							//up to date installer version yay
+							LogMessage("Installer version check passed.");
 						}
 						else {
 							if (rootElement.TryGetProperty("MinApiVersion", out tempElement)) {
 								minRequiredVersion = tempElement.GetInt32();
 								if (currentInstallerVersion > minRequiredVersion) {
+									LogMessage($"Installer is out of date but within bounds: (min version {minRequiredVersion})");
 									//todo send warning that installer may be out of date
 								}
 								else
 								{
+									LogMessage($"Installer is too out of date! (min version {minRequiredVersion})");
 									throw new Exception("Installer is too out of date!");
 								}
 							}
@@ -248,6 +251,8 @@ namespace Crackdown_Installer
 							JsonElement dependencyItem = tempElement[i];
 							JsonElement tempElement2 = new();
 							string name = GetJsonAttribute("Name", dependencyItem,tempElement2);
+							LogMessage($"Getting update for dependency item: {name}");
+							
 							string desc = GetJsonAttribute("Description", dependencyItem, tempElement2);
 							string versionType = GetJsonAttribute("VersionType", dependencyItem, tempElement2);
 							string versionId = GetJsonAttribute("VersionId", dependencyItem, tempElement2);
@@ -290,7 +295,7 @@ namespace Crackdown_Installer
 									queryUrl = PROVIDER_GITHUB_RELEASE_URL.Replace("$id$", uri);
 									try
 									{
-										LogMessage($"Sent req to {queryUrl}");
+										LogMessage($"Secondary update query to {queryUrl}");
 
 
 										HttpRequestMessage httpReqMessage = new HttpRequestMessage(HttpMethod.Get, queryUrl);
@@ -376,18 +381,19 @@ namespace Crackdown_Installer
 				}
 				catch (JsonException e)
 				{
-					LogMessage(e.Message);
+					LogMessage($"Invalid json manifest from server: {e.Message}");
+					LogMessage(@"\n", jsonResponse);
 				}
 				catch (Exception e)
 				{
-					LogMessage(e.Message);
+					LogMessage($"Generic exception when querying server for manifest: {e.Message}");
 				}
 			}
 			else
 			{
 				throw new Exception("Bad dependency manifest! Could not complete installation.");
 			}
-
+			LogMessage("Completed manifest query.");
 			dependenciesFromServer = result;
 		}
 
