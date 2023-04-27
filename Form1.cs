@@ -19,6 +19,7 @@ namespace Crackdown_Installer
 		List<ModDependencyEntry> selectedModsToInstall = new();
 
 		private bool isQueryDependenciesInProgress = false;
+		private bool hasDoneCollectDependencies = false;
 
 		// placeholders; should use the localization resource framework provided by microsoft
 		const string TOOLTIP_DEPENDENCY_NEEDS_UPDATE = "Older version detected; an update is available.";
@@ -134,7 +135,7 @@ namespace Crackdown_Installer
 		/// <summary>
 		/// 
 		/// </summary>
-		private void CheckExistingMods()
+		private void CheckExistingMods(List<ModDependencyEntry> dependencyEntries)
 		{
 
 			// remove any existing dependency options
@@ -144,9 +145,6 @@ namespace Crackdown_Installer
 
 			// get list of detected mods that are installed
 			InstallerWrapper.CollectExistingMods();
-
-			// get list of dependency mods used in crackdown
-			List<ModDependencyEntry> dependencyEntries = InstallerWrapper.GetModDependencyList();
 
 			if (dependencyEntries.Count == 0)
 			{
@@ -365,13 +363,21 @@ namespace Crackdown_Installer
 				}
 			}
 
+			/*
 			if (checkedListBox_missingDependencyItems.Items.Count == 0)
 			{
 				// tell user that no downloads are required,
 				// and that they may quit and play at any time
 				label_stage3Desc_2.Text = STAGE_DESC_ALL_ALREADY_INSTALLED;
-				nextPageOverride = 3;
+				LogMessage($"Done all 1, current page {currentPage}");
+				if (currentPage == 2)
+				{
+					button_nextStage.Enabled = true;
+					// go to finish
+					nextPageOverride = 3;
+				}
 			}
+			*/
 		}
 
 
@@ -571,6 +577,37 @@ namespace Crackdown_Installer
 			o.MouseLeave += new EventHandler(OnMouseLeave);
 		}
 
+		private void CallbackOnGetDependencies(List<ModDependencyEntry> modDependencyEntries)
+		{
+			if (!hasDoneCollectDependencies)
+			{
+				CheckExistingMods(modDependencyEntries);
+
+				//LogMessage("Callback complete");
+
+				//foreach (ModDependencyEntry entry in modDependencyEntries)
+				//{
+				//	LogMessage("DEBUG:", entry.GetName());
+				//}
+
+				hasDoneCollectDependencies = true;
+				if (currentPage == 1)
+				{
+					button_nextStage.Enabled = true;
+				}
+
+				if (checkedListBox_missingDependencyItems.Items.Count == 0)
+				{
+					// tell user that no downloads are required,
+					// and that they may quit and play at any time
+					label_stage3Desc_2.Text = STAGE_DESC_ALL_ALREADY_INSTALLED;
+
+					// go to finish
+					nextPageOverride = 3;
+				}
+			}
+		}
+
 		/// <summary>
 		/// Event handler for showing the "select packages" page.
 		/// </summary>
@@ -580,7 +617,19 @@ namespace Crackdown_Installer
 		{
 			if (panel_stage2.Visible)
 			{
-				CheckExistingMods();
+				if (hasDoneCollectDependencies)
+				{
+					button_nextStage.Enabled = true;
+				}
+				else
+				{
+					button_nextStage.Enabled = false;
+
+					// get list of dependency mods used in crackdown
+					// and then populate missing mods list
+					Action<List<ModDependencyEntry>> clbk = CallbackOnGetDependencies;
+					InstallerWrapper.GetModDependencyListAsync(true, clbk);
+				}
 			}
 		}
 
@@ -760,6 +809,7 @@ namespace Crackdown_Installer
 
 		private void MoveToPrevStage()
 		{
+			nextPageOverride = null;
 			if (currentPage > 0)
 			{
 				MoveToStage(currentPage - 1);
@@ -824,7 +874,7 @@ namespace Crackdown_Installer
 		{
 			if (!isQueryDependenciesInProgress)
 			{
-				CheckExistingMods();
+//				CheckExistingMods();
 			}
 		}
 

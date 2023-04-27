@@ -165,13 +165,22 @@ namespace Crackdown_Installer
 			throw new Exception("GetModDependencyList() failed- InstallerManager not initalized");
 		}
 		
-		public static List<ModDependencyEntry> GetModDependencyList(bool forceReevaluate)
+		public static async void GetModDependencyListAsync(bool forceReevaluate,Action<List<ModDependencyEntry>> clbk)
 		{
 			if (instMgr != null)
 			{
-				return instMgr.GetDependencyEntries(forceReevaluate);
+				if (forceReevaluate)
+				{
+					List<ModDependencyEntry> result = await instMgr.CollectDependencies();
+					clbk(result);
+				}
+				else
+				{
+					clbk(instMgr.GetDependencyEntries());
+				}
+				return;
 			}
-			throw new Exception("GetModDependencyList() failed- InstallerManager not initalized");
+			throw new Exception("GetModDependencyList(bool, Action) failed- InstallerManager not initalized");
 		}
 
 		public static void CollectExistingMods()

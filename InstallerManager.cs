@@ -16,7 +16,7 @@ namespace Crackdown_Installer
 		// if true, allows file downloads to replace existing files by the same name.
 		// must be enabled to allow updating existing mods
 
-		private const bool DEBUG_LOCAL_JSON_HTTPREQ = false;
+		private const bool DEBUG_LOCAL_JSON_HTTPREQ = true;
 		//if true, skips sending an http req for the json file,
 		//and reads a local json file instead.
 
@@ -108,14 +108,14 @@ namespace Crackdown_Installer
 			CollectPd2Mods();
 
 			// query cd update server
-			CollectDependencies();
+			//CollectDependencies();
 		}
 
 		/// <summary>
 		/// Query update server for manifest of dependencies needed for CD, and parse the response. Also perform secondary query if necessary.
 		/// Save the resulting list to memory.
 		/// </summary>
-		public async void CollectDependencies()
+		public async Task<List<ModDependencyEntry>> CollectDependencies()
 		{
 			
 			List<ModDependencyEntry> result = new();
@@ -395,6 +395,7 @@ namespace Crackdown_Installer
 			}
 			LogMessage("Completed manifest query.");
 			dependenciesFromServer = result;
+			return result;
 		}
 
 		/// <summary>
@@ -405,18 +406,6 @@ namespace Crackdown_Installer
 			return dependenciesFromServer;
 		}
 		
-		/// <summary>
-		/// Query dependencies, save them to the cached member, and return the resulting list
-		/// </summary>
-		/// <returns></returns>
-		public List<ModDependencyEntry> GetDependencyEntries(bool forceReevaluate) {
-			if (forceReevaluate)
-			{
-				CollectDependencies();
-			}
-			return GetDependencyEntries();
-		}
-
 		/// <summary>
 		/// Returns the path to the base Steam install directory.
 		/// </summary>
