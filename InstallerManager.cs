@@ -16,7 +16,7 @@ namespace Crackdown_Installer
 		// if true, allows file downloads to replace existing files by the same name.
 		// must be enabled to allow updating existing mods
 
-		private const bool DEBUG_LOCAL_JSON_HTTPREQ = true;
+		private const bool DEBUG_LOCAL_JSON_HTTPREQ = false;
 		//if true, skips sending an http req for the json file,
 		//and reads a local json file instead.
 
