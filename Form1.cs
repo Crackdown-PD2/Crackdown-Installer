@@ -50,6 +50,7 @@ namespace Crackdown_Installer
 		{
 			InitializeComponent();
 
+
 			// set initial value for pd2 install path
 			string detectedDirectory = InstallerWrapper.GetPd2InstallPath();
 			richTextBox_pd2InstallPath.Text = detectedDirectory;
@@ -107,20 +108,25 @@ namespace Crackdown_Installer
 				// evaluate true number of checked items
 				// since this event is run before the checked items count is updated
 				int count = send?.CheckedItems.Count ?? 0;
-				if (e.NewValue == CheckState.Unchecked)
-				{
-					count--;
+
+				if (send?.IsDisabledItem(e.Index) ?? true)
+					{
+
+					if (e.NewValue == CheckState.Unchecked)
+					{
+						count--;
+					}
+					else if (e.NewValue == CheckState.Checked)
+					{
+						count++;
+					}
 				}
-				else if (e.NewValue == CheckState.Checked)
-				{
-					count++;
-				}
+
 				button_nextStage.Enabled = count > 0;
 
 			}
 			checkedListBox_missingDependencyItems.ItemCheck += new ItemCheckEventHandler(OnItemCheckChanged);
-
-
+			
 			checkedListBox_installedDependencyItems = new()
 			{
 				CheckOnClick = checkedListBox_dummyInstalledMods.CheckOnClick,
@@ -242,7 +248,7 @@ namespace Crackdown_Installer
 					}
 					else
 					{
-						throw new Exception("Unknown dependency type: " + dependencyType);
+						throw new Exception($"Unknown dependency type: {dependencyType}");
 					}
 
 					// check manifest version against installed version
@@ -288,7 +294,7 @@ namespace Crackdown_Installer
 						}
 
 						dependencyExistingNeedsUpdate = dependencyHash != currentHash;
-						LogMessage($"Version check (hash): {dependencyHash} ?=  {currentHash} ?");
+						LogMessage($"Version check (hash): current {dependencyHash}, server  {currentHash} ?");
 					}
 					else
 					{
@@ -316,7 +322,7 @@ namespace Crackdown_Installer
 							currentVersion = definitionFile.GetVersion();
 							dependencyExistingNeedsUpdate = currentVersion != dependencyVersionId;
 
-							LogMessage($"Version check: {currentVersion} ?=  {dependencyVersionId} ?");
+							LogMessage($"Version check: current {currentVersion}, server {dependencyVersionId}");
 						}
 					}
 				}
@@ -408,6 +414,47 @@ namespace Crackdown_Installer
 		private void CallbackPopulateDependencyInstallList()
 		{
 			selectedModsToInstall.Clear();
+
+			foreach (string s in checkedListBox_missingDependencyItems.Items)
+			{
+				int i = checkedListBox_missingDependencyItems.Items.IndexOf(s);
+
+				ModDependencyEntry entry = allModsToInstall[i];
+				if (entry != null)
+				{
+					bool shouldAddItem;
+					if (checkedListBox_missingDependencyItems.IsDisabledItem(i))
+					{
+						// custom disable-able checkedlistbox does not play nice sometimes
+						// clicking a disabled object doesn't update the draw but appears to toggle the item state regardless
+						// for the moment assume that any disabled items will be mandatory and must be checked
+						LogMessage($"Checkbox Mandatory: {i} {entry.GetName()}");
+
+						shouldAddItem = true;
+					}
+					else
+					{
+						if (checkedListBox_missingDependencyItems.CheckedIndices.Contains(i))
+						{
+							LogMessage($"Checkbox Checked: {i} {entry.GetName()}");
+							shouldAddItem = true;
+						}
+						else
+						{
+							LogMessage($"Checkbox Unchecked: {i} {entry.GetName()}");
+							shouldAddItem = false;
+						}
+					}
+					if (shouldAddItem)
+					{
+						selectedModsToInstall.Add(entry);
+						string entryName = entry.GetName();
+						localMaxDependencyNameLength = Math.Max(entryName.Length, localMaxDependencyNameLength);
+					}
+				}
+			}
+
+			/*
 			foreach (int i in checkedListBox_missingDependencyItems.CheckedIndices)
 			{
 				ModDependencyEntry entry = allModsToInstall[i];
@@ -418,15 +465,19 @@ namespace Crackdown_Installer
 					localMaxDependencyNameLength = Math.Max(entryName.Length, localMaxDependencyNameLength);
 				}
 			}
+			*/
 
 			listBox_downloadList.Items.Clear();
+			int selectedDownloadCount = 0;
 			foreach (ModDependencyEntry entry in selectedModsToInstall)
 			{
+				selectedDownloadCount++;
 				int i = listBox_downloadList.Items.Add(GetDownloadSpacerString(entry.GetName(), INSTALL_STATUS_PENDING));
 			}
 
 			//only enable download button if there is at least one item to download
-			button_startDownload.Enabled = listBox_downloadList.Items.Count > 0;
+
+			button_startDownload.Enabled = selectedDownloadCount > 0;
 
 		}
 
@@ -612,6 +663,7 @@ namespace Crackdown_Installer
 					// tell user that no downloads are required,
 					// and that they may quit and play at any time
 					label_stage3Desc_2.Text = STAGE_DESC_ALL_ALREADY_INSTALLED;
+					LogMessage("All dependencies were already installed");
 
 					// go to finish
 					nextPageOverride = 3;
@@ -890,7 +942,7 @@ namespace Crackdown_Installer
 		{
 			if (!isQueryDependenciesInProgress)
 			{
-				//				CheckExistingMods();
+				// CheckExistingMods();
 			}
 		}
 
@@ -989,14 +1041,26 @@ namespace Crackdown_Installer
 		}
 	}
 
-	//extends CheckedListBox
-	//to allow disabling individual items 
-	//from:
-	//https://stackoverflow.com/questions/4368618/how-to-disable-a-checkbox-in-a-checkedlistbox
+	// extends CheckedListBox
+	// to allow disabling individual items 
+	// from:
+	// https://stackoverflow.com/questions/4368618/how-to-disable-a-checkbox-in-a-checkedlistbox
 	public class CheckedListBoxDisabledItems : CheckedListBox
 	{
 		private List<string> _checkedAndDisabledItems = new List<string>();
 		private List<int> _checkedAndDisabledIndexes = new List<int>();
+
+
+		public bool IsDisabledItem(int index)
+		{
+			return _checkedAndDisabledIndexes.Contains(index);
+		}
+
+		// assumes that disabled items are checked regardless of their internal state
+		public bool IsCheckedItem(int index)
+		{
+			return IsDisabledItem(index) || CheckedIndices.Contains(index);
+		}
 
 		public void CheckAndDisable(string item)
 		{
