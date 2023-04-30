@@ -107,9 +107,6 @@ namespace Crackdown_Installer
 				LogMessage("Unable to automatically find PD2 install directory.");
 			}
 
-			// find all currently installed pd2 mods (including superblt dll)
-			CollectPd2Mods();
-
 			// query cd update server
 			//CollectDependencies();
 		}
@@ -782,7 +779,7 @@ namespace Crackdown_Installer
 			if (steamInstallDirectory != null)
 			{
 				string steamPath = Path.Combine(steamInstallDirectory, "steam.exe");
-				string launchProtocol = ("steam://rungameid/$id$").Replace("$id", PD2_APPID);
+				string launchProtocol = ("steam://rungameid/$id$").Replace("$id$", PD2_APPID);
 				LogMessage($"Launching PD2 using [{launchProtocol}]");
 				System.Diagnostics.Process.Start(steamPath, launchProtocol);
 			}
@@ -1049,29 +1046,45 @@ namespace Crackdown_Installer
 			}
 
 			//search mods folder 
-			foreach (string subDirectory in Microsoft.VisualBasic.FileIO.FileSystem.GetDirectories(modsPath))
+			if (Microsoft.VisualBasic.FileIO.FileSystem.DirectoryExists(modsPath))
 			{
-				Pd2ModData? newBltMod = ReadJsonModData(subDirectory);
-				Pd2ModData? newBeardlibMod = ReadXmlModData(subDirectory);
-
-				//must have at least one valid mod definition file to be counted as a mod
-				if (newBltMod != null || newBeardlibMod != null)
+				foreach (string subDirectory in Microsoft.VisualBasic.FileIO.FileSystem.GetDirectories(modsPath))
 				{
-					Pd2ModFolder newModFolder = new Pd2ModFolder(newBltMod, newBeardlibMod, subDirectory);
-					result.Add(newModFolder);
+					Pd2ModData? newBltMod = ReadJsonModData(subDirectory);
+					Pd2ModData? newBeardlibMod = ReadXmlModData(subDirectory);
+
+					//must have at least one valid mod definition file to be counted as a mod
+					if (newBltMod != null || newBeardlibMod != null)
+					{
+						Pd2ModFolder newModFolder = new Pd2ModFolder(newBltMod, newBeardlibMod, subDirectory);
+						result.Add(newModFolder);
+					}
 				}
+			}
+			else
+			{
+				// create empty mods directory for later mod installation
+				Directory.CreateDirectory(modsPath);
 			}
 
 
 			//search mod_overrides folder (beardlib mods only)
-			foreach (string subDirectory in Microsoft.VisualBasic.FileIO.FileSystem.GetDirectories(modOverridesPath))
+			if (Microsoft.VisualBasic.FileIO.FileSystem.DirectoryExists(modOverridesPath))
 			{
-				Pd2ModData? newBeardlibMod = ReadXmlModData(subDirectory);
-				if (newBeardlibMod != null)
+				foreach (string subDirectory in Microsoft.VisualBasic.FileIO.FileSystem.GetDirectories(modOverridesPath))
 				{
-					Pd2ModFolder newModFolder = new Pd2ModFolder(null, newBeardlibMod,subDirectory);
-					result.Add(newModFolder);
+					Pd2ModData? newBeardlibMod = ReadXmlModData(subDirectory);
+					if (newBeardlibMod != null)
+					{
+						Pd2ModFolder newModFolder = new Pd2ModFolder(null, newBeardlibMod, subDirectory);
+						result.Add(newModFolder);
+					}
 				}
+			}
+			else
+			{
+				// create empty mod_overrides directory for later mod installation
+				Directory.CreateDirectory(modOverridesPath);
 			}
 
 			installedPd2Mods = result;

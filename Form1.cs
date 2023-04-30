@@ -92,7 +92,10 @@ namespace Crackdown_Installer
 				MinimumSize = checkedListBox_dummyMissingMods.MinimumSize,
 				MaximumSize = checkedListBox_dummyMissingMods.MaximumSize,
 				Location = checkedListBox_dummyMissingMods.Location,
-				Font = checkedListBox_dummyMissingMods.Font
+				Font = checkedListBox_dummyMissingMods.Font,
+				HorizontalScrollbar = checkedListBox_dummyMissingMods.HorizontalScrollbar,
+				HorizontalExtent = checkedListBox_dummyMissingMods.HorizontalExtent,
+				ScrollAlwaysVisible = checkedListBox_dummyMissingMods.ScrollAlwaysVisible
 			};
 			panel_stage2.Controls.Add(checkedListBox_missingDependencyItems);
 
@@ -126,7 +129,10 @@ namespace Crackdown_Installer
 				MinimumSize = checkedListBox_dummyInstalledMods.MinimumSize,
 				MaximumSize = checkedListBox_dummyInstalledMods.MaximumSize,
 				Location = checkedListBox_dummyInstalledMods.Location,
-				Font = checkedListBox_dummyInstalledMods.Font
+				Font = checkedListBox_dummyInstalledMods.Font,
+				HorizontalScrollbar = checkedListBox_dummyInstalledMods.HorizontalScrollbar,
+				HorizontalExtent = checkedListBox_dummyInstalledMods.HorizontalExtent,
+				ScrollAlwaysVisible = checkedListBox_dummyInstalledMods.ScrollAlwaysVisible
 			};
 			panel_stage2.Controls.Add(checkedListBox_installedDependencyItems);
 
@@ -884,7 +890,7 @@ namespace Crackdown_Installer
 		{
 			if (!isQueryDependenciesInProgress)
 			{
-//				CheckExistingMods();
+				//				CheckExistingMods();
 			}
 		}
 

@@ -217,7 +217,7 @@
 			// button_resetInstallPath
 			// 
 			button_resetInstallPath.Anchor = AnchorStyles.None;
-			button_resetInstallPath.Location = new Point(124, 214);
+			button_resetInstallPath.Location = new Point(124, 225);
 			button_resetInstallPath.Name = "button_resetInstallPath";
 			button_resetInstallPath.Size = new Size(80, 28);
 			button_resetInstallPath.TabIndex = 7;
@@ -228,7 +228,7 @@
 			// button_browseInstallPath
 			// 
 			button_browseInstallPath.Anchor = AnchorStyles.None;
-			button_browseInstallPath.Location = new Point(39, 214);
+			button_browseInstallPath.Location = new Point(38, 225);
 			button_browseInstallPath.Name = "button_browseInstallPath";
 			button_browseInstallPath.Size = new Size(80, 28);
 			button_browseInstallPath.TabIndex = 8;
@@ -278,8 +278,8 @@
 			richTextBox_pd2InstallPath.Multiline = false;
 			richTextBox_pd2InstallPath.Name = "richTextBox_pd2InstallPath";
 			richTextBox_pd2InstallPath.ReadOnly = true;
-			richTextBox_pd2InstallPath.ScrollBars = RichTextBoxScrollBars.Horizontal;
-			richTextBox_pd2InstallPath.Size = new Size(334, 28);
+			richTextBox_pd2InstallPath.ScrollBars = RichTextBoxScrollBars.ForcedHorizontal;
+			richTextBox_pd2InstallPath.Size = new Size(334, 24);
 			richTextBox_pd2InstallPath.TabIndex = 4;
 			richTextBox_pd2InstallPath.TabStop = false;
 			richTextBox_pd2InstallPath.Text = "";
@@ -300,7 +300,7 @@
 			// button_quit
 			// 
 			button_quit.Anchor = AnchorStyles.None;
-			button_quit.Location = new Point(542, 5);
+			button_quit.Location = new Point(371, 6);
 			button_quit.Name = "button_quit";
 			button_quit.Size = new Size(80, 28);
 			button_quit.TabIndex = 2;
@@ -377,13 +377,14 @@
 			// 
 			// label_modDependenciesItemMouseoverDescription
 			// 
+			label_modDependenciesItemMouseoverDescription.Anchor = AnchorStyles.None;
 			label_modDependenciesItemMouseoverDescription.AutoSize = true;
-			label_modDependenciesItemMouseoverDescription.Location = new Point(157, 6);
+			label_modDependenciesItemMouseoverDescription.Location = new Point(8, 6);
 			label_modDependenciesItemMouseoverDescription.Name = "label_modDependenciesItemMouseoverDescription";
 			label_modDependenciesItemMouseoverDescription.Size = new Size(258, 15);
 			label_modDependenciesItemMouseoverDescription.TabIndex = 13;
 			label_modDependenciesItemMouseoverDescription.Text = "Mouse over a dependency to see more about it.";
-			label_modDependenciesItemMouseoverDescription.TextAlign = ContentAlignment.MiddleCenter;
+			label_modDependenciesItemMouseoverDescription.TextAlign = ContentAlignment.MiddleLeft;
 			label_modDependenciesItemMouseoverDescription.Click += label_modDependenciesItemMouseverDescription_Click;
 			// 
 			// checkedListBox_dummyMissingMods
@@ -465,9 +466,11 @@
 			// 
 			listBox_downloadList.Font = new Font("Consolas", 9F, FontStyle.Regular, GraphicsUnit.Point);
 			listBox_downloadList.FormattingEnabled = true;
+			listBox_downloadList.HorizontalScrollbar = true;
 			listBox_downloadList.ItemHeight = 14;
 			listBox_downloadList.Location = new Point(14, 40);
 			listBox_downloadList.Name = "listBox_downloadList";
+			listBox_downloadList.ScrollAlwaysVisible = true;
 			listBox_downloadList.Size = new Size(600, 186);
 			listBox_downloadList.TabIndex = 1;
 			// 
@@ -509,7 +512,7 @@
 			// 
 			button_prevStage.Anchor = AnchorStyles.None;
 			button_prevStage.FlatStyle = FlatStyle.System;
-			button_prevStage.Location = new Point(380, 5);
+			button_prevStage.Location = new Point(457, 6);
 			button_prevStage.Name = "button_prevStage";
 			button_prevStage.Size = new Size(74, 28);
 			button_prevStage.TabIndex = 8;
@@ -520,7 +523,7 @@
 			// button_nextStage
 			// 
 			button_nextStage.Anchor = AnchorStyles.None;
-			button_nextStage.Location = new Point(460, 5);
+			button_nextStage.Location = new Point(537, 6);
 			button_nextStage.Name = "button_nextStage";
 			button_nextStage.Size = new Size(76, 28);
 			button_nextStage.TabIndex = 9;
@@ -678,7 +681,7 @@
 			// linkLabelTroubleshooting
 			// 
 			linkLabelTroubleshooting.AutoSize = true;
-			linkLabelTroubleshooting.Location = new Point(30, 217);
+			linkLabelTroubleshooting.Location = new Point(14, 221);
 			linkLabelTroubleshooting.Name = "linkLabelTroubleshooting";
 			linkLabelTroubleshooting.Size = new Size(126, 15);
 			linkLabelTroubleshooting.TabIndex = 17;
@@ -689,12 +692,14 @@
 			// listBox_downloadFailedList
 			// 
 			listBox_downloadFailedList.Anchor = AnchorStyles.None;
+			listBox_downloadFailedList.Font = new Font("Consolas", 9F, FontStyle.Regular, GraphicsUnit.Point);
 			listBox_downloadFailedList.FormattingEnabled = true;
-			listBox_downloadFailedList.ItemHeight = 15;
+			listBox_downloadFailedList.HorizontalScrollbar = true;
+			listBox_downloadFailedList.ItemHeight = 14;
 			listBox_downloadFailedList.Items.AddRange(new object[] { "There were no installation errors." });
-			listBox_downloadFailedList.Location = new Point(29, 105);
+			listBox_downloadFailedList.Location = new Point(18, 105);
 			listBox_downloadFailedList.Name = "listBox_downloadFailedList";
-			listBox_downloadFailedList.Size = new Size(400, 109);
+			listBox_downloadFailedList.Size = new Size(420, 102);
 			listBox_downloadFailedList.TabIndex = 7;
 			// 
 			// Form1
@@ -714,7 +719,7 @@
 			Icon = (Icon)resources.GetObject("$this.Icon");
 			Name = "Form1";
 			SizeGripStyle = SizeGripStyle.Hide;
-			Text = "-";
+			Text = "Crackdown Mod Installer";
 			Load += Form1_Load;
 			panel_stage1.ResumeLayout(false);
 			splitContainer1.Panel1.ResumeLayout(false);
