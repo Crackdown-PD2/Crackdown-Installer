@@ -69,6 +69,8 @@ namespace Crackdown_Installer
 		const string ERROR_DOWNLOAD_FAILED = "Could not download package";
 		const string ERROR_MOVE_FAILED = "Could not move package file(s)";
 
+		const string TEMP_DIRECTORY_NAME = @"temp"; // located in the working directory of the installer application
+
 		private string? steamInstallDirectory;
 		private string? pd2InstallDirectory;
 
@@ -747,19 +749,21 @@ namespace Crackdown_Installer
 		/// Creates a temporary directory in the user's Temp folder (by default, in "\AppData\Local\Temp\" )
 		/// and save its information as a member
 		/// </summary>
-		public void CreateTempDirectory() {
-			if (tempDirectoryInfo != null) {
-				DisposeTempDirectory();
-				tempDirectoryInfo = null;
+		public void CreateTempDirectory()
+		{
+			tempDirectoryInfo = new DirectoryInfo(TEMP_DIRECTORY_NAME);
+			if (tempDirectoryInfo.Exists)
+			{
+				tempDirectoryInfo.Delete(true);
 			}
-			tempDirectoryInfo = Directory.CreateTempSubdirectory("crackdowninstaller_");
+			tempDirectoryInfo.Create();
 		}
 
 		public DirectoryInfo? GetTempDirectory()
 		{
 			return tempDirectoryInfo;
 		}
-
+		/*
 		/// <summary>
 		/// Remove the temporary directory created by CreateTempDirectory
 		/// </summary>
@@ -767,12 +771,21 @@ namespace Crackdown_Installer
 		{
 			if (!DEBUG_NO_FILE_CLEANUP)
 			{
-				tempDirectoryInfo = Directory.CreateTempSubdirectory("crackdowninstaller_");
-				string tempDownloadsDirectory = tempDirectoryInfo.FullName;
-				Directory.Delete(tempDownloadsDirectory + @"\", true);
-				LogMessage($"Downloads complete. Deleting {tempDownloadsDirectory}.");
+				try
+				{
+					DirectoryInfo tempDir = new DirectoryInfo(TEMP_DIRECTORY_NAME);
+					tempDir.Delete(true);
+					tempDir = null;
+
+					//LogMessage($"Downloads complete. Deleting {tempDownloadsDirectory}.");
+				}
+				catch (Exception e)
+				{
+					LogMessage("Unable to delete temp directory.");
+				}
 			}
 		}
+		*/
 
 		public void LaunchPD2Game()
 		{
