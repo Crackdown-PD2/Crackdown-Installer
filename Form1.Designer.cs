@@ -299,8 +299,8 @@
 			// 
 			// button_quit
 			// 
-			button_quit.Anchor = AnchorStyles.None;
-			button_quit.Location = new Point(371, 6);
+			button_quit.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+			button_quit.Location = new Point(372, 5);
 			button_quit.Name = "button_quit";
 			button_quit.Size = new Size(80, 28);
 			button_quit.TabIndex = 2;
@@ -510,9 +510,9 @@
 			// 
 			// button_prevStage
 			// 
-			button_prevStage.Anchor = AnchorStyles.None;
+			button_prevStage.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
 			button_prevStage.FlatStyle = FlatStyle.System;
-			button_prevStage.Location = new Point(457, 6);
+			button_prevStage.Location = new Point(458, 5);
 			button_prevStage.Name = "button_prevStage";
 			button_prevStage.Size = new Size(74, 28);
 			button_prevStage.TabIndex = 8;
@@ -522,8 +522,8 @@
 			// 
 			// button_nextStage
 			// 
-			button_nextStage.Anchor = AnchorStyles.None;
-			button_nextStage.Location = new Point(537, 6);
+			button_nextStage.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+			button_nextStage.Location = new Point(538, 5);
 			button_nextStage.Name = "button_nextStage";
 			button_nextStage.Size = new Size(76, 28);
 			button_nextStage.TabIndex = 9;
@@ -544,7 +544,7 @@
 			panel_navigation.Dock = DockStyle.Bottom;
 			panel_navigation.Location = new Point(0, 321);
 			panel_navigation.Name = "panel_navigation";
-			panel_navigation.Size = new Size(632, 40);
+			panel_navigation.Size = new Size(635, 40);
 			panel_navigation.TabIndex = 10;
 			panel_navigation.Paint += panel4_Paint;
 			// 

@@ -33,7 +33,7 @@ namespace Crackdown_Installer
 		const string INSTALL_STATUS_INPROGRESS = "In progress";
 		const string STAGE_DESC_ALL_ALREADY_INSTALLED = "You already have all Crackdown packages installed and up-to-date!";
 		const string END_DOWNLOAD_ERRORS_TITLE = "Installation Failed";
-		const string END_DOWNLOAD_ERRORS_DESC = "One or more errors were detected.";
+		const string END_DOWNLOAD_ERRORS_DESC = "One or more errors were detected. You can try the installer process again, or install the dependencies manually.";
 
 		/*
 		readonly string[] DUCKSOUNDS = {
@@ -110,7 +110,7 @@ namespace Crackdown_Installer
 				int count = send?.CheckedItems.Count ?? 0;
 
 				if (send?.IsDisabledItem(e.Index) ?? true)
-					{
+				{
 
 					if (e.NewValue == CheckState.Unchecked)
 					{
@@ -126,7 +126,7 @@ namespace Crackdown_Installer
 
 			}
 			checkedListBox_missingDependencyItems.ItemCheck += new ItemCheckEventHandler(OnItemCheckChanged);
-			
+
 			checkedListBox_installedDependencyItems = new()
 			{
 				CheckOnClick = checkedListBox_dummyInstalledMods.CheckOnClick,
@@ -508,13 +508,15 @@ namespace Crackdown_Installer
 				}
 			}
 
+			System.Diagnostics.Debug.WriteLine($"Download Progress percent {percent} current {current} total {total}");
+
 			if (percent != null)
 			{
-				//				progressBar_downloadIndividual.Value = (int) percent;
+				//progressBar_downloadIndividual.Value = (int) percent;
 			}
 			else
 			{
-				//				progressBar_downloadIndividual.Value = 0;
+				//progressBar_downloadIndividual.Value = 0;
 			}
 
 
@@ -764,6 +766,10 @@ namespace Crackdown_Installer
 					string result = GetDownloadSpacerString(name, message);
 					int messageLen = message.Length;
 					listBox_downloadFailedList.Items.Add(result);
+					if (!downloadResult.success)
+					{
+						failedAny = true;
+					}
 				}
 
 				if (failedAny)
@@ -824,7 +830,7 @@ namespace Crackdown_Installer
 
 				i++;
 			}
-
+			label_downloadStatusDesc.Text = "All downloads complete.";
 			return downloadResults;
 		}
 
