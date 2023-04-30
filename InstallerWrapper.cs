@@ -14,6 +14,8 @@ namespace Crackdown_Installer
 		const string URL_CRACKDOWN_WIKI = "https://totalcrackdown.wiki.gg/";
 		const string URL_CRACKDOWN_INSTRUCTIONS = "https://github.com/Crackdown-PD2/Crackdown-Installer";
 
+		const string CRASHLOG_PATH = "CRASHLOG.txt";
+
 		/// <summary>
 		///  The main entry point for the application.
 		/// </summary>
@@ -42,16 +44,23 @@ namespace Crackdown_Installer
 			// see https://aka.ms/applicationconfiguration.
 			ApplicationConfiguration.Initialize();
 
-			Application.ThreadException += Application_ThreadException;
+			Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+			AppDomain.CurrentDomain.UnhandledException +=
+				new UnhandledExceptionEventHandler(OnApplicationUnhandledException);
 
 			Application.ApplicationExit += new EventHandler(OnApplicationExit);
 
 			Application.Run(new Form1());
 		}
 
-		private static void Application_ThreadException(object sender, ThreadExceptionEventArgs e)
+		private static void OnApplicationUnhandledException(object sender, UnhandledExceptionEventArgs e)
 		{
-			LogMessage($"Application has crashed (unhandled exception): {e.Exception.Message}");
+			using (StreamWriter a = new(CRASHLOG_PATH))
+			{
+				a.WriteLine("Application has crashed:");
+				a.WriteLine(e.ExceptionObject);
+				a.Flush();
+			}
 			Application.Exit();
 		}
 
