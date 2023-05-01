@@ -6,9 +6,9 @@ This will be a file called **Crackdown-Installer.zip** or something similar- NOT
 
 2. **Run** the **Crackdown-Installer.exe**.
 
-3. [Optional] Customize your installation. Some content is optional, such as enemy reskins, map edits, and the TOTAL CRACKDOWN Player-side Overhaul; you can choose whether or not to install this optional content at your leisure. The installer can be used again later to modify your Crackdown mod and install or uninstall any of this content at will.
+Some content is optional, such as enemy reskins, map edits, and the TOTAL CRACKDOWN Player-side Overhaul; in the "Select Packages" section of the Installer window, you can choose whether or not to install this optional content at your leisure. The installer can be used again later to modify your Crackdown mod and install any of this content at will.
 
-4. Enjoy!
+3. Enjoy!
 
 # About Crackdown-Installer
 This repo contains the source code for Crackdown's auto-installer program.
