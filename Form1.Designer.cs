@@ -162,7 +162,7 @@
 			// 
 			// pictureBox_cdLogo
 			// 
-			pictureBox_cdLogo.ImageLocation = "https://i.imgur.com/jPwofLU.png";
+			pictureBox_cdLogo.ImageLocation = "https://raw.githubusercontent.com/Crackdown-PD2/deathvox/autoupdate/PRIME.png";
 			pictureBox_cdLogo.Location = new Point(10, 9);
 			pictureBox_cdLogo.Name = "pictureBox_cdLogo";
 			pictureBox_cdLogo.Size = new Size(164, 164);
