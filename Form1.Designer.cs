@@ -174,7 +174,7 @@
 			// linkLabelDiscord
 			// 
 			linkLabelDiscord.AutoSize = true;
-			linkLabelDiscord.Location = new Point(10, 214);
+			linkLabelDiscord.Location = new Point(10, 262);
 			linkLabelDiscord.Name = "linkLabelDiscord";
 			linkLabelDiscord.Size = new Size(138, 15);
 			linkLabelDiscord.TabIndex = 1;
@@ -185,7 +185,7 @@
 			// linkLabelHomepage
 			// 
 			linkLabelHomepage.AutoSize = true;
-			linkLabelHomepage.Location = new Point(10, 262);
+			linkLabelHomepage.Location = new Point(10, 214);
 			linkLabelHomepage.Name = "linkLabelHomepage";
 			linkLabelHomepage.Size = new Size(140, 15);
 			linkLabelHomepage.TabIndex = 2;
@@ -300,7 +300,7 @@
 			// button_quit
 			// 
 			button_quit.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-			button_quit.Location = new Point(372, 5);
+			button_quit.Location = new Point(366, 5);
 			button_quit.Name = "button_quit";
 			button_quit.Size = new Size(80, 28);
 			button_quit.TabIndex = 2;
@@ -544,7 +544,7 @@
 			panel_navigation.Dock = DockStyle.Bottom;
 			panel_navigation.Location = new Point(0, 321);
 			panel_navigation.Name = "panel_navigation";
-			panel_navigation.Size = new Size(635, 40);
+			panel_navigation.Size = new Size(632, 40);
 			panel_navigation.TabIndex = 10;
 			panel_navigation.Paint += panel4_Paint;
 			// 
