@@ -71,13 +71,25 @@ B) The Installer might not have disk write permissions to download the package.
 
 ### 3: "Could not move package file(s)"
 
+This general error message indicates that the installer downloaded the files correctly but was unable to move them all to their final installation location. As such, the installation process might have left behind a few files that need to be put in the correct place(s).
+
 #### Possible Explanation(s):
 
-A) Your computer might not have enough free disk space on the disk that contains your PAYDAY 2 installation. 
+A) Some file paths that are too long may cause some files to fail to transfer automatically. [This is a limitation of Windows](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry), not the Installer. We're currently examining possible long-term fixes, but in the meantime, here's what you can do:
+
+**Solution A:** Move the files to the mods folder yourself.
+
+Look inside your Crackdown Installer folder. Open the folder called `temp`. Inside, you will see some folders for each download that failed- drag those folders into the installationn location. You should be able to find these locations in your mods folder.
+
+**Solution B:** Download install the dependency/dependencies manually.
+
+In the above "List of Dependencies", download each one and use the instructions on their respective pages to install them.
+
+B) Your computer might not have enough free disk space on the disk that contains your PAYDAY 2 installation.
 
 **Solution:** Ensure that the disk that contains your PAYDAY 2 game installation has enough free space for all of Crackdown's dependencies. The total unzipped file size for Crackdown and all of its dependencies (including optional packages) is roughly 1.9GB, though this is subject to change, as Crackdown is still in development. You may need to delete some other mods or files on that disk.
 
-B) Your antivirus program may be interfering. Antivirus programs are important, but often cause interference in day to day operations. Since many antivirus programs run routine scans on files (especially recent ones), it may also be interfering as the Installer attempts to move or remove a file currently being scanned, for example.
+C) Your antivirus program may be interfering. Antivirus programs are important, but often cause interference in day to day operations. Since many antivirus programs run routine scans on files (especially recent ones), it may also be interfering as the Installer attempts to move or remove a file currently being scanned, for example.
 
 **Solution:** Try downloading and installing files manually (see above for links), temporarily disabling your antivirus program while the Installer is downloading files (you can re-enable it afterward).
 
@@ -87,7 +99,7 @@ B) Your antivirus program may be interfering. Antivirus programs are important, 
 # Troubleshooting Other Installer Problems
 
 Any issues with the Installer itself will be logged (along with the exception-specific error message) inside the installer's session log.
-If you encounter crashing, freezing, or other issues, please find the log file inside most recent Crackdown Installer log folder (in `\AppData\Local\Temp\crackdowninstaller_[random characters here]`) and send it to us.
+If you encounter crashing, freezing, or other issues, please find the log file inside the `temp` folder, which is in the Crackdown Installer folder alongside the Installer's executable file.
 
 Also feel free to give feedback on the installer, as it's still in development.
 
