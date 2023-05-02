@@ -1,6 +1,6 @@
 # User instructions
 
-Note: You need (.NET 7.0 Desktop Runtime)[https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/runtime-desktop-7.0.5-windows-x64-installer?cid=getdotnetcore] in order to use the Crackdown Installer. If you don't already have it, don't worry- attempting to run the application will automatically prompt you to download and install this runtime- you need only click to accept it, no technical expertise required.
+Note: You need [.NET 7.0 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/runtime-desktop-7.0.5-windows-x64-installer?cid=getdotnetcore) in order to use the Crackdown Installer. If you don't already have it, don't worry- attempting to run the application will automatically prompt you to download and install this runtime- you need only click to accept it, no technical expertise required.
 
 1. **Download and unzip** the latest release from the [Releases page](https://github.com/Crackdown-PD2/Crackdown-Installer/releases). 
 
