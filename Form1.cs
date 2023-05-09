@@ -1,10 +1,12 @@
 using static Crackdown_Installer.InstallerManager;
 using ZNix.SuperBLT;
+using Microsoft.Win32;
 
 namespace Crackdown_Installer
 {
-	public partial class Form1 : Form
+	public partial class Form_InstallerWindow : Form
 	{
+
 		const int TOOLTIP_HOVER_DURATION = 10000; //10000ms -> 10s
 		int currentPage;
 		int? nextPageOverride = null;
@@ -46,7 +48,7 @@ namespace Crackdown_Installer
 		const int MIN_NUM_SPACERS = 12;
 
 		// constructor method
-		public Form1()
+		public Form_InstallerWindow()
 		{
 			InitializeComponent();
 
@@ -61,15 +63,15 @@ namespace Crackdown_Installer
 			timesClickedTitle = 0;
 
 			panels = new List<Panel>();
-			panels.Add(panel_stage1);
-			panels.Add(panel_stage2);
-			panels.Add(panel_stage3);
-			panels.Add(panel_stage4);
+			panels.Add(panel_stageLanding);
+			panels.Add(panel_stagePreDownload);
+			panels.Add(panel_stageDownload);
+			panels.Add(panel_stageEnd);
 			Point basePanelLocation = new Point(0, 0);
-			panel_stage1.Location = basePanelLocation;
-			panel_stage2.Location = basePanelLocation;
-			panel_stage3.Location = basePanelLocation;
-			panel_stage4.Location = basePanelLocation;
+			panel_stageLanding.Location = basePanelLocation;
+			panel_stagePreDownload.Location = basePanelLocation;
+			panel_stageDownload.Location = basePanelLocation;
+			panel_stageEnd.Location = basePanelLocation;
 
 			labels = new();
 			labels.Add(label_navigation_stage1);
@@ -79,9 +81,9 @@ namespace Crackdown_Installer
 
 			//register visibility change (aka on stage change) event callbacks
 			//panel_stage2.VisibleChanged += new EventHandler(this.panel_stage2_OnVisibleChanged);
-			panel_stage2.VisibleChanged += new EventHandler(this.panel_stage2_OnVisibleChanged);
-			panel_stage3.VisibleChanged += new EventHandler(this.panel_stage3_OnVisibleChanged);
-			panel_stage4.VisibleChanged += new EventHandler(this.panel_stage4_OnVisibleChanged);
+			panel_stagePreDownload.VisibleChanged += new EventHandler(this.panel_stage2_OnVisibleChanged);
+			panel_stageDownload.VisibleChanged += new EventHandler(this.panel_stage3_OnVisibleChanged);
+			panel_stageEnd.VisibleChanged += new EventHandler(this.panel_stage4_OnVisibleChanged);
 
 			//inherit selected properties from dummy checkboxes
 			//since the visual editor obviously can't handle custom extended control classes
@@ -98,7 +100,7 @@ namespace Crackdown_Installer
 				HorizontalExtent = checkedListBox_dummyMissingMods.HorizontalExtent,
 				ScrollAlwaysVisible = checkedListBox_dummyMissingMods.ScrollAlwaysVisible
 			};
-			panel_stage2.Controls.Add(checkedListBox_missingDependencyItems);
+			panel_stagePreDownload.Controls.Add(checkedListBox_missingDependencyItems);
 
 			// disable "next stage" button when there are no items selected
 			void OnItemCheckChanged(object? sender, ItemCheckEventArgs e)
@@ -140,7 +142,7 @@ namespace Crackdown_Installer
 				HorizontalExtent = checkedListBox_dummyInstalledMods.HorizontalExtent,
 				ScrollAlwaysVisible = checkedListBox_dummyInstalledMods.ScrollAlwaysVisible
 			};
-			panel_stage2.Controls.Add(checkedListBox_installedDependencyItems);
+			panel_stagePreDownload.Controls.Add(checkedListBox_installedDependencyItems);
 
 		}
 
@@ -407,9 +409,7 @@ namespace Crackdown_Installer
 			Application.Exit();
 		}
 
-		private void CallbackDetectPd2InstallDirectory()
-		{
-		}
+		private void CallbackDetectPd2InstallDirectory() { }
 
 		private void CallbackPopulateDependencyInstallList()
 		{
@@ -538,10 +538,7 @@ namespace Crackdown_Installer
 			p.Value = current / total * 100;
 		}
 
-		void SetDownloadProgressBar(System.Windows.Forms.ProgressBar p, int progress)
-		{
-			p.Value = progress;
-		}
+		void SetDownloadProgressBar(System.Windows.Forms.ProgressBar p, int progress) { p.Value = progress; }
 
 		/// <summary>
 		/// Adds an event handler to set the given label to the given text when hovering over the given element in the given CheckedListBox.
@@ -664,7 +661,7 @@ namespace Crackdown_Installer
 				{
 					// tell user that no downloads are required,
 					// and that they may quit and play at any time
-					label_stage3Desc_2.Text = STAGE_DESC_ALL_ALREADY_INSTALLED;
+					label_stagePreDownload_Desc_2.Text = STAGE_DESC_ALL_ALREADY_INSTALLED;
 					LogMessage("All dependencies were already installed");
 
 					// go to finish
@@ -680,7 +677,7 @@ namespace Crackdown_Installer
 		/// <param name="e"></param>
 		private void panel_stage2_OnVisibleChanged(object? sender, EventArgs e)
 		{
-			if (panel_stage2.Visible)
+			if (panel_stagePreDownload.Visible)
 			{
 				if (hasDoneCollectDependencies)
 				{
@@ -705,7 +702,7 @@ namespace Crackdown_Installer
 		/// <param name="e"></param>
 		private void panel_stage3_OnVisibleChanged(object? sender, EventArgs e)
 		{
-			if (panel_stage3.Visible)
+			if (panel_stageDownload.Visible)
 			{
 				CallbackPopulateDependencyInstallList();
 				button_nextStage.Enabled = false;
@@ -719,7 +716,7 @@ namespace Crackdown_Installer
 		/// <param name="e"></param>
 		private void panel_stage4_OnVisibleChanged(object? sender, EventArgs e)
 		{
-			if (panel_stage4.Visible)
+			if (panel_stageEnd.Visible)
 			{
 				button_nextStage.Visible = false;
 				button_nextStage.Enabled = false;
@@ -729,26 +726,6 @@ namespace Crackdown_Installer
 				button_quit.Enabled = false;
 			}
 		}
-
-		//quit button
-		private void button1_Click(object sender, EventArgs e)
-		{
-			CallbackOnQuitButtonPressed();
-		}
-
-		//start download button
-		private async void button_start_Click(object sender, EventArgs e)
-		{
-			button_prevStage.Enabled = false;
-			button_startDownload.Enabled = false;
-
-			List<DependencyDownloadResult> downloadResults = await DownloadSelectedDependencies();
-
-			//button_prevStage.Enabled = true; //don't enable backtracking
-			//button_startDownload.Enabled = true; //should only be enabled on re-evaluate missing mods
-			CallbackOnDownloadDependenciesComplete(downloadResults);
-		}
-
 
 		private void CallbackOnDownloadDependenciesComplete(List<DependencyDownloadResult> downloadResults)
 		{
@@ -775,7 +752,7 @@ namespace Crackdown_Installer
 				if (failedAny)
 				{
 					label_downloadStatusDesc.Text = INSTALL_STATUS_DONE;
-					label_endTitle.Text = END_DOWNLOAD_ERRORS_TITLE;
+					label_stageEnd_Title.Text = END_DOWNLOAD_ERRORS_TITLE;
 					label_endDesc.Text = END_DOWNLOAD_ERRORS_DESC;
 				}
 			}
@@ -890,34 +867,26 @@ namespace Crackdown_Installer
 			}
 		}
 
-		private void folderBrowserDialog1_HelpRequest(object sender, EventArgs e)
-		{ }
+		private void Form1_Load(object sender, EventArgs e) { }
 
-		private void richTextBox1_TextChanged(object sender, EventArgs e)
-		{ }
-
-		private void linkLabelDiscord_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+		//quit button (in navigation)
+		private void button1_Click(object sender, EventArgs e)
 		{
-			InstallerWrapper.BrowserOpenDiscord();
+			CallbackOnQuitButtonPressed();
 		}
 
-		private void linkLabelHomepage_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+		//start download button
+		private async void button_start_Click(object sender, EventArgs e)
 		{
-			InstallerWrapper.BrowserOpenHomepage();
-		}
+			button_prevStage.Enabled = false;
+			button_startDownload.Enabled = false;
 
-		private void linkLabelWiki_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-		{
-			InstallerWrapper.BrowserOpenWiki();
-		}
+			List<DependencyDownloadResult> downloadResults = await DownloadSelectedDependencies();
 
-		private void linkLabelTroubleshooting_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-		{
-			InstallerWrapper.BrowserOpenInstructions();
+			//button_prevStage.Enabled = true; //don't enable backtracking
+			//button_startDownload.Enabled = true; //should only be enabled on re-evaluate missing mods
+			CallbackOnDownloadDependenciesComplete(downloadResults);
 		}
-
-		private void Form1_Load(object sender, EventArgs e)
-		{ }
 
 		private void button_browsePath_Click(object sender, EventArgs e)
 		{
@@ -932,16 +901,6 @@ namespace Crackdown_Installer
 		private void button_prevStage_Click(object sender, EventArgs e)
 		{
 			MoveToPrevStage();
-		}
-
-		private void panel4_Paint(object sender, PaintEventArgs e)
-		{
-
-		}
-
-		private void labelStage3Title_Click(object sender, EventArgs e)
-		{
-
 		}
 
 		private void button_detectExistingMods_Click(object sender, EventArgs e)
@@ -966,41 +925,14 @@ namespace Crackdown_Installer
 			richTextBox_pd2InstallPath.Text = folderBrowserDialog1.InitialDirectory;
 		}
 
-		private void label_stage1Title_Click(object sender, EventArgs e)
-		{
-			if (++timesClickedTitle > 4)
-			{
-				LogMessage("Stop clicking him, he's already dead!");
-			}
-		}
 
-		private void label_stage3Title_Click(object sender, EventArgs e)
+		private void button_RegistryPathFix_Click(object sender, EventArgs e)
 		{
 
+			// test code to determine if long paths are enabled
+			//object? registryValue = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem", "LongPathsEnabled", "");
+			//LogMessage("Found thingy " + registryValue);
 		}
-
-		private void pictureBox_cdLogo_Click(object sender, EventArgs e)
-		{
-			/*
-				int i = new Random().Next(DUCKSOUNDS.Length);
-				string snd = DUCKSOUNDS[i];
-
-				using (var player = new System.Media.SoundPlayer(snd))
-				{
-					try
-					{
-						player.Play();
-					}
-					catch (Exception e)
-					{
-						LogMessage($"Could not play sound: {e.Message}");
-					}
-				}
-			*/
-		}
-
-		private void label_modDependenciesItemMouseverDescription_Click(object sender, EventArgs e)
-		{ }
 
 		private void button_finalQuit_Click(object sender, EventArgs e)
 		{
@@ -1029,22 +961,76 @@ namespace Crackdown_Installer
 			InstallerWrapper.OpenTempDirectory();
 		}
 
-		private void splitContainer1_Panel2_Paint(object sender, PaintEventArgs e)
-		{ }
+		private void folderBrowserDialog1_HelpRequest(object sender, EventArgs e) { }
 
-		private void panel_stage5_Paint(object sender, PaintEventArgs e)
-		{ }
+		private void richTextBox1_TextChanged(object sender, EventArgs e) { }
 
-		private void label_stage1Desc_Click(object sender, EventArgs e)
-		{ }
-
-		private void label_communityTitle_Click(object sender, EventArgs e)
-		{ }
-
-		private void label_endTitle_Click(object sender, EventArgs e)
+		private void linkLabelDiscord_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
 		{
-
+			InstallerWrapper.BrowserOpenDiscord();
 		}
+
+		private void linkLabelHomepage_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+		{
+			InstallerWrapper.BrowserOpenHomepage();
+		}
+
+		private void linkLabelWiki_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+		{
+			InstallerWrapper.BrowserOpenWiki();
+		}
+
+		private void linkLabelTroubleshooting_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+		{
+			InstallerWrapper.BrowserOpenInstructions();
+		}
+
+		private void panel4_Paint(object sender, PaintEventArgs e) { }
+
+		private void panel_stage5_Paint(object sender, PaintEventArgs e) { }
+
+		private void splitContainer1_Panel2_Paint(object sender, PaintEventArgs e) { }
+
+		private void labelStage3Title_Click(object sender, EventArgs e) { }
+
+		private void label_stage1Title_Click(object sender, EventArgs e)
+		{
+			if (++timesClickedTitle > 4)
+			{
+				LogMessage("Stop clicking him, he's already dead!");
+			}
+		}
+
+		private void label_stage3Title_Click(object sender, EventArgs e) { }
+
+		private void label_modDependenciesItemMouseverDescription_Click(object sender, EventArgs e) { }
+
+		private void label_stage1Desc_Click(object sender, EventArgs e) { }
+
+		private void label_communityTitle_Click(object sender, EventArgs e) { }
+
+		private void label_endTitle_Click(object sender, EventArgs e) { }
+
+		private void pictureBox_cdLogo_Click(object sender, EventArgs e)
+		{
+			/*
+				int i = new Random().Next(DUCKSOUNDS.Length);
+				string snd = DUCKSOUNDS[i];
+
+				using (var player = new System.Media.SoundPlayer(snd))
+				{
+					try
+					{
+						player.Play();
+					}
+					catch (Exception e)
+					{
+						LogMessage($"Could not play sound: {e.Message}");
+					}
+				}
+			*/
+		}
+
 	}
 
 	// extends CheckedListBox

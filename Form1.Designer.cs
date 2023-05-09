@@ -1,6 +1,6 @@
 ﻿namespace Crackdown_Installer
 {
-	partial class Form1
+	partial class Form_InstallerWindow
 	{
 		/// <summary>
 		///  Required designer variable.
@@ -29,15 +29,16 @@
 		private void InitializeComponent()
 		{
 			components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
+			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form_InstallerWindow));
 			button_startDownload = new Button();
-			panel_stage1 = new Panel();
+			panel_stageLanding = new Panel();
 			splitContainer1 = new SplitContainer();
 			label_communityTitle = new Label();
 			pictureBox_cdLogo = new PictureBox();
 			linkLabelDiscord = new LinkLabel();
 			linkLabelHomepage = new LinkLabel();
 			linkLabelWiki = new LinkLabel();
+			button_RegistryPathFix = new Button();
 			label_installPathTitle = new Label();
 			button_resetInstallPath = new Button();
 			button_browseInstallPath = new Button();
@@ -45,13 +46,13 @@
 			label_browseInstallPathDesc = new Label();
 			label_stage1Title = new Label();
 			richTextBox_pd2InstallPath = new RichTextBox();
-			label_stage2Title = new Label();
+			label_stagePreDownload_Title = new Label();
 			button_quit = new Button();
 			folderBrowserDialog1 = new FolderBrowserDialog();
-			panel_stage2 = new Panel();
-			label_stage3Desc_2 = new Label();
+			panel_stagePreDownload = new Panel();
+			label_stagePreDownload_Desc_2 = new Label();
 			label_stage3_arrow = new Label();
-			label_stage3Desc = new Label();
+			label_stagePreDownload_Desc_1 = new Label();
 			panel_stage3_mouseoverDesc = new Panel();
 			label_modDependenciesItemMouseoverDescription = new Label();
 			checkedListBox_dummyMissingMods = new CheckedListBox();
@@ -59,12 +60,12 @@
 			button_detectExistingMods = new Button();
 			label_missingModsList = new Label();
 			checkedListBox_dummyInstalledMods = new CheckedListBox();
-			label_stage3Title = new Label();
+			label_stageDownload_Title = new Label();
 			progressBar_downloadIndividual = new ProgressBar();
 			listBox_downloadList = new ListBox();
 			label_downloadStatusDesc = new Label();
 			label_downloadStatusTitle = new Label();
-			panel_stage3 = new Panel();
+			panel_stageDownload = new Panel();
 			button_prevStage = new Button();
 			button_nextStage = new Button();
 			panel_navigation = new Panel();
@@ -79,22 +80,23 @@
 			panel_stage5 = new Panel();
 			button_finalQuit = new Button();
 			label_endDesc = new Label();
-			label_endTitle = new Label();
-			panel_stage4 = new Panel();
+			label_stageEnd_Title = new Label();
+			panel_stageEnd = new Panel();
 			linkLabelTroubleshooting = new LinkLabel();
 			listBox_downloadFailedList = new ListBox();
-			panel_stage1.SuspendLayout();
+			panel_stageRegistryPathFix = new Panel();
+			panel_stageLanding.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
 			splitContainer1.Panel1.SuspendLayout();
 			splitContainer1.Panel2.SuspendLayout();
 			splitContainer1.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)pictureBox_cdLogo).BeginInit();
-			panel_stage2.SuspendLayout();
+			panel_stagePreDownload.SuspendLayout();
 			panel_stage3_mouseoverDesc.SuspendLayout();
-			panel_stage3.SuspendLayout();
+			panel_stageDownload.SuspendLayout();
 			panel_navigation.SuspendLayout();
 			panel_stage5.SuspendLayout();
-			panel_stage4.SuspendLayout();
+			panel_stageEnd.SuspendLayout();
 			SuspendLayout();
 			// 
 			// button_startDownload
@@ -108,15 +110,15 @@
 			button_startDownload.UseVisualStyleBackColor = true;
 			button_startDownload.Click += button_start_Click;
 			// 
-			// panel_stage1
+			// panel_stageLanding
 			// 
-			panel_stage1.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-			panel_stage1.BackColor = SystemColors.Control;
-			panel_stage1.Controls.Add(splitContainer1);
-			panel_stage1.Location = new Point(0, 0);
-			panel_stage1.Name = "panel_stage1";
-			panel_stage1.Size = new Size(632, 320);
-			panel_stage1.TabIndex = 1;
+			panel_stageLanding.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+			panel_stageLanding.BackColor = SystemColors.Control;
+			panel_stageLanding.Controls.Add(splitContainer1);
+			panel_stageLanding.Location = new Point(0, 0);
+			panel_stageLanding.Name = "panel_stageLanding";
+			panel_stageLanding.Size = new Size(632, 320);
+			panel_stageLanding.TabIndex = 1;
 			// 
 			// splitContainer1
 			// 
@@ -136,6 +138,7 @@
 			// splitContainer1.Panel2
 			// 
 			splitContainer1.Panel2.BackColor = SystemColors.Control;
+			splitContainer1.Panel2.Controls.Add(button_RegistryPathFix);
 			splitContainer1.Panel2.Controls.Add(label_installPathTitle);
 			splitContainer1.Panel2.Controls.Add(button_resetInstallPath);
 			splitContainer1.Panel2.Controls.Add(button_browseInstallPath);
@@ -203,6 +206,17 @@
 			linkLabelWiki.TabStop = true;
 			linkLabelWiki.Text = "Crackdown Mod Wiki";
 			linkLabelWiki.LinkClicked += linkLabelWiki_LinkClicked;
+			// 
+			// button_RegistryPathFix
+			// 
+			button_RegistryPathFix.Location = new Point(229, 225);
+			button_RegistryPathFix.Name = "button_RegistryPathFix";
+			button_RegistryPathFix.Size = new Size(128, 28);
+			button_RegistryPathFix.TabIndex = 0;
+			button_RegistryPathFix.Text = "Fix Registry Path";
+			button_RegistryPathFix.UseVisualStyleBackColor = true;
+			button_RegistryPathFix.Visible = false;
+			button_RegistryPathFix.Click += button_RegistryPathFix_Click;
 			// 
 			// label_installPathTitle
 			// 
@@ -286,21 +300,21 @@
 			richTextBox_pd2InstallPath.WordWrap = false;
 			richTextBox_pd2InstallPath.TextChanged += richTextBox1_TextChanged;
 			// 
-			// label_stage2Title
+			// label_stagePreDownload_Title
 			// 
-			label_stage2Title.Anchor = AnchorStyles.None;
-			label_stage2Title.AutoSize = true;
-			label_stage2Title.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
-			label_stage2Title.Location = new Point(18, 12);
-			label_stage2Title.Name = "label_stage2Title";
-			label_stage2Title.Size = new Size(96, 15);
-			label_stage2Title.TabIndex = 10;
-			label_stage2Title.Text = "Select Packages";
+			label_stagePreDownload_Title.Anchor = AnchorStyles.None;
+			label_stagePreDownload_Title.AutoSize = true;
+			label_stagePreDownload_Title.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
+			label_stagePreDownload_Title.Location = new Point(18, 12);
+			label_stagePreDownload_Title.Name = "label_stagePreDownload_Title";
+			label_stagePreDownload_Title.Size = new Size(96, 15);
+			label_stagePreDownload_Title.TabIndex = 10;
+			label_stagePreDownload_Title.Text = "Select Packages";
 			// 
 			// button_quit
 			// 
 			button_quit.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-			button_quit.Location = new Point(366, 5);
+			button_quit.Location = new Point(350, 5);
 			button_quit.Name = "button_quit";
 			button_quit.Size = new Size(80, 28);
 			button_quit.TabIndex = 2;
@@ -318,33 +332,33 @@
 			folderBrowserDialog1.ShowNewFolderButton = false;
 			folderBrowserDialog1.HelpRequest += folderBrowserDialog1_HelpRequest;
 			// 
-			// panel_stage2
+			// panel_stagePreDownload
 			// 
-			panel_stage2.BackColor = SystemColors.Control;
-			panel_stage2.Controls.Add(label_stage3Desc_2);
-			panel_stage2.Controls.Add(label_stage2Title);
-			panel_stage2.Controls.Add(label_stage3_arrow);
-			panel_stage2.Controls.Add(label_stage3Desc);
-			panel_stage2.Controls.Add(panel_stage3_mouseoverDesc);
-			panel_stage2.Controls.Add(checkedListBox_dummyMissingMods);
-			panel_stage2.Controls.Add(label_installedModsList);
-			panel_stage2.Controls.Add(button_detectExistingMods);
-			panel_stage2.Controls.Add(label_missingModsList);
-			panel_stage2.Controls.Add(checkedListBox_dummyInstalledMods);
-			panel_stage2.Location = new Point(0, 380);
-			panel_stage2.Name = "panel_stage2";
-			panel_stage2.Size = new Size(632, 320);
-			panel_stage2.TabIndex = 6;
-			panel_stage2.Visible = false;
+			panel_stagePreDownload.BackColor = SystemColors.Control;
+			panel_stagePreDownload.Controls.Add(label_stagePreDownload_Desc_2);
+			panel_stagePreDownload.Controls.Add(label_stagePreDownload_Title);
+			panel_stagePreDownload.Controls.Add(label_stage3_arrow);
+			panel_stagePreDownload.Controls.Add(label_stagePreDownload_Desc_1);
+			panel_stagePreDownload.Controls.Add(panel_stage3_mouseoverDesc);
+			panel_stagePreDownload.Controls.Add(checkedListBox_dummyMissingMods);
+			panel_stagePreDownload.Controls.Add(label_installedModsList);
+			panel_stagePreDownload.Controls.Add(button_detectExistingMods);
+			panel_stagePreDownload.Controls.Add(label_missingModsList);
+			panel_stagePreDownload.Controls.Add(checkedListBox_dummyInstalledMods);
+			panel_stagePreDownload.Location = new Point(0, 380);
+			panel_stagePreDownload.Name = "panel_stagePreDownload";
+			panel_stagePreDownload.Size = new Size(632, 320);
+			panel_stagePreDownload.TabIndex = 6;
+			panel_stagePreDownload.Visible = false;
 			// 
-			// label_stage3Desc_2
+			// label_stagePreDownload_Desc_2
 			// 
-			label_stage3Desc_2.Anchor = AnchorStyles.None;
-			label_stage3Desc_2.Location = new Point(16, 56);
-			label_stage3Desc_2.Name = "label_stage3Desc_2";
-			label_stage3Desc_2.Size = new Size(600, 18);
-			label_stage3Desc_2.TabIndex = 17;
-			label_stage3Desc_2.Text = "Select which files to download and install, then click \"Next\".";
+			label_stagePreDownload_Desc_2.Anchor = AnchorStyles.None;
+			label_stagePreDownload_Desc_2.Location = new Point(16, 56);
+			label_stagePreDownload_Desc_2.Name = "label_stagePreDownload_Desc_2";
+			label_stagePreDownload_Desc_2.Size = new Size(600, 18);
+			label_stagePreDownload_Desc_2.TabIndex = 17;
+			label_stagePreDownload_Desc_2.Text = "Select which files to download and install, then click \"Next\".";
 			// 
 			// label_stage3_arrow
 			// 
@@ -358,13 +372,13 @@
 			label_stage3_arrow.Text = "→";
 			label_stage3_arrow.TextAlign = ContentAlignment.MiddleCenter;
 			// 
-			// label_stage3Desc
+			// label_stagePreDownload_Desc_1
 			// 
-			label_stage3Desc.Location = new Point(16, 36);
-			label_stage3Desc.Name = "label_stage3Desc";
-			label_stage3Desc.Size = new Size(485, 19);
-			label_stage3Desc.TabIndex = 2;
-			label_stage3Desc.Text = "These are mods that Crackdown needs in order to work properly.";
+			label_stagePreDownload_Desc_1.Location = new Point(16, 36);
+			label_stagePreDownload_Desc_1.Name = "label_stagePreDownload_Desc_1";
+			label_stagePreDownload_Desc_1.Size = new Size(485, 19);
+			label_stagePreDownload_Desc_1.TabIndex = 2;
+			label_stagePreDownload_Desc_1.Text = "These are mods that Crackdown needs in order to work properly.";
 			// 
 			// panel_stage3_mouseoverDesc
 			// 
@@ -444,16 +458,16 @@
 			checkedListBox_dummyInstalledMods.TabIndex = 17;
 			checkedListBox_dummyInstalledMods.Visible = false;
 			// 
-			// label_stage3Title
+			// label_stageDownload_Title
 			// 
-			label_stage3Title.AutoSize = true;
-			label_stage3Title.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
-			label_stage3Title.Location = new Point(14, 16);
-			label_stage3Title.Name = "label_stage3Title";
-			label_stage3Title.Size = new Size(117, 15);
-			label_stage3Title.TabIndex = 16;
-			label_stage3Title.Text = "Download Packages";
-			label_stage3Title.Click += label_stage3Title_Click;
+			label_stageDownload_Title.AutoSize = true;
+			label_stageDownload_Title.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
+			label_stageDownload_Title.Location = new Point(14, 16);
+			label_stageDownload_Title.Name = "label_stageDownload_Title";
+			label_stageDownload_Title.Size = new Size(117, 15);
+			label_stageDownload_Title.TabIndex = 16;
+			label_stageDownload_Title.Text = "Download Packages";
+			label_stageDownload_Title.Click += label_stage3Title_Click;
 			// 
 			// progressBar_downloadIndividual
 			// 
@@ -492,27 +506,27 @@
 			label_downloadStatusTitle.TabIndex = 2;
 			label_downloadStatusTitle.Text = "- KB / - KB";
 			// 
-			// panel_stage3
+			// panel_stageDownload
 			// 
-			panel_stage3.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-			panel_stage3.BackColor = SystemColors.Control;
-			panel_stage3.Controls.Add(label_stage3Title);
-			panel_stage3.Controls.Add(progressBar_downloadIndividual);
-			panel_stage3.Controls.Add(label_downloadStatusTitle);
-			panel_stage3.Controls.Add(button_startDownload);
-			panel_stage3.Controls.Add(listBox_downloadList);
-			panel_stage3.Controls.Add(label_downloadStatusDesc);
-			panel_stage3.Location = new Point(645, 0);
-			panel_stage3.Name = "panel_stage3";
-			panel_stage3.Size = new Size(632, 320);
-			panel_stage3.TabIndex = 7;
-			panel_stage3.Visible = false;
+			panel_stageDownload.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+			panel_stageDownload.BackColor = SystemColors.Control;
+			panel_stageDownload.Controls.Add(label_stageDownload_Title);
+			panel_stageDownload.Controls.Add(progressBar_downloadIndividual);
+			panel_stageDownload.Controls.Add(label_downloadStatusTitle);
+			panel_stageDownload.Controls.Add(button_startDownload);
+			panel_stageDownload.Controls.Add(listBox_downloadList);
+			panel_stageDownload.Controls.Add(label_downloadStatusDesc);
+			panel_stageDownload.Location = new Point(645, 0);
+			panel_stageDownload.Name = "panel_stageDownload";
+			panel_stageDownload.Size = new Size(632, 320);
+			panel_stageDownload.TabIndex = 7;
+			panel_stageDownload.Visible = false;
 			// 
 			// button_prevStage
 			// 
 			button_prevStage.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
 			button_prevStage.FlatStyle = FlatStyle.System;
-			button_prevStage.Location = new Point(458, 5);
+			button_prevStage.Location = new Point(442, 5);
 			button_prevStage.Name = "button_prevStage";
 			button_prevStage.Size = new Size(74, 28);
 			button_prevStage.TabIndex = 8;
@@ -523,7 +537,7 @@
 			// button_nextStage
 			// 
 			button_nextStage.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-			button_nextStage.Location = new Point(538, 5);
+			button_nextStage.Location = new Point(522, 5);
 			button_nextStage.Name = "button_nextStage";
 			button_nextStage.Size = new Size(76, 28);
 			button_nextStage.TabIndex = 9;
@@ -542,9 +556,9 @@
 			panel_navigation.Controls.Add(button_nextStage);
 			panel_navigation.Controls.Add(button_prevStage);
 			panel_navigation.Dock = DockStyle.Bottom;
-			panel_navigation.Location = new Point(0, 321);
+			panel_navigation.Location = new Point(0, 282);
 			panel_navigation.Name = "panel_navigation";
-			panel_navigation.Size = new Size(632, 40);
+			panel_navigation.Size = new Size(616, 40);
 			panel_navigation.TabIndex = 10;
 			panel_navigation.Paint += panel4_Paint;
 			// 
@@ -623,7 +637,7 @@
 			// 
 			panel_stage5.Anchor = AnchorStyles.None;
 			panel_stage5.Controls.Add(label_navigation_stage5);
-			panel_stage5.Location = new Point(1305, 342);
+			panel_stage5.Location = new Point(1297, 323);
 			panel_stage5.Name = "panel_stage5";
 			panel_stage5.Size = new Size(632, 293);
 			panel_stage5.TabIndex = 16;
@@ -650,33 +664,33 @@
 			label_endDesc.Text = "You can now launch PAYDAY 2 and play the Crackdown Mod!";
 			label_endDesc.TextAlign = ContentAlignment.TopCenter;
 			// 
-			// label_endTitle
+			// label_stageEnd_Title
 			// 
-			label_endTitle.Anchor = AnchorStyles.None;
-			label_endTitle.Font = new Font("Segoe UI", 15.75F, FontStyle.Bold, GraphicsUnit.Point);
-			label_endTitle.Location = new Point(2, 19);
-			label_endTitle.Name = "label_endTitle";
-			label_endTitle.Size = new Size(628, 36);
-			label_endTitle.TabIndex = 0;
-			label_endTitle.Text = "Installation Complete";
-			label_endTitle.TextAlign = ContentAlignment.TopCenter;
-			label_endTitle.Click += label_endTitle_Click;
+			label_stageEnd_Title.Anchor = AnchorStyles.None;
+			label_stageEnd_Title.Font = new Font("Segoe UI", 15.75F, FontStyle.Bold, GraphicsUnit.Point);
+			label_stageEnd_Title.Location = new Point(2, 19);
+			label_stageEnd_Title.Name = "label_stageEnd_Title";
+			label_stageEnd_Title.Size = new Size(628, 36);
+			label_stageEnd_Title.TabIndex = 0;
+			label_stageEnd_Title.Text = "Installation Complete";
+			label_stageEnd_Title.TextAlign = ContentAlignment.TopCenter;
+			label_stageEnd_Title.Click += label_endTitle_Click;
 			// 
-			// panel_stage4
+			// panel_stageEnd
 			// 
-			panel_stage4.BackColor = SystemColors.Control;
-			panel_stage4.Controls.Add(linkLabelTroubleshooting);
-			panel_stage4.Controls.Add(listBox_downloadFailedList);
-			panel_stage4.Controls.Add(button_finalQuit);
-			panel_stage4.Controls.Add(button_openTempFolder);
-			panel_stage4.Controls.Add(label_endTitle);
-			panel_stage4.Controls.Add(button_finishAndLaunch);
-			panel_stage4.Controls.Add(label_endDesc);
-			panel_stage4.Location = new Point(645, 380);
-			panel_stage4.Name = "panel_stage4";
-			panel_stage4.Size = new Size(632, 320);
-			panel_stage4.TabIndex = 15;
-			panel_stage4.Visible = false;
+			panel_stageEnd.BackColor = SystemColors.Control;
+			panel_stageEnd.Controls.Add(linkLabelTroubleshooting);
+			panel_stageEnd.Controls.Add(listBox_downloadFailedList);
+			panel_stageEnd.Controls.Add(button_finalQuit);
+			panel_stageEnd.Controls.Add(button_openTempFolder);
+			panel_stageEnd.Controls.Add(label_stageEnd_Title);
+			panel_stageEnd.Controls.Add(button_finishAndLaunch);
+			panel_stageEnd.Controls.Add(label_endDesc);
+			panel_stageEnd.Location = new Point(645, 380);
+			panel_stageEnd.Name = "panel_stageEnd";
+			panel_stageEnd.Size = new Size(632, 320);
+			panel_stageEnd.TabIndex = 15;
+			panel_stageEnd.Visible = false;
 			// 
 			// linkLabelTroubleshooting
 			// 
@@ -702,26 +716,34 @@
 			listBox_downloadFailedList.Size = new Size(420, 102);
 			listBox_downloadFailedList.TabIndex = 7;
 			// 
-			// Form1
+			// panel_stageRegistryPathFix
+			// 
+			panel_stageRegistryPathFix.Location = new Point(1290, 0);
+			panel_stageRegistryPathFix.Name = "panel_stageRegistryPathFix";
+			panel_stageRegistryPathFix.Size = new Size(632, 320);
+			panel_stageRegistryPathFix.TabIndex = 17;
+			// 
+			// Form_InstallerWindow
 			// 
 			AcceptButton = button_nextStage;
 			AutoScaleDimensions = new SizeF(7F, 15F);
 			AutoScaleMode = AutoScaleMode.Font;
 			BackColor = SystemColors.Control;
-			ClientSize = new Size(632, 361);
+			ClientSize = new Size(616, 322);
+			Controls.Add(panel_stageRegistryPathFix);
 			Controls.Add(panel_stage5);
-			Controls.Add(panel_stage3);
-			Controls.Add(panel_stage4);
-			Controls.Add(panel_stage2);
+			Controls.Add(panel_stageDownload);
+			Controls.Add(panel_stageEnd);
+			Controls.Add(panel_stagePreDownload);
 			Controls.Add(panel_navigation);
-			Controls.Add(panel_stage1);
+			Controls.Add(panel_stageLanding);
 			FormBorderStyle = FormBorderStyle.FixedSingle;
 			Icon = (Icon)resources.GetObject("$this.Icon");
-			Name = "Form1";
+			Name = "Form_InstallerWindow";
 			SizeGripStyle = SizeGripStyle.Hide;
 			Text = "Crackdown Mod Installer";
 			Load += Form1_Load;
-			panel_stage1.ResumeLayout(false);
+			panel_stageLanding.ResumeLayout(false);
 			splitContainer1.Panel1.ResumeLayout(false);
 			splitContainer1.Panel1.PerformLayout();
 			splitContainer1.Panel2.ResumeLayout(false);
@@ -729,29 +751,29 @@
 			((System.ComponentModel.ISupportInitialize)splitContainer1).EndInit();
 			splitContainer1.ResumeLayout(false);
 			((System.ComponentModel.ISupportInitialize)pictureBox_cdLogo).EndInit();
-			panel_stage2.ResumeLayout(false);
-			panel_stage2.PerformLayout();
+			panel_stagePreDownload.ResumeLayout(false);
+			panel_stagePreDownload.PerformLayout();
 			panel_stage3_mouseoverDesc.ResumeLayout(false);
 			panel_stage3_mouseoverDesc.PerformLayout();
-			panel_stage3.ResumeLayout(false);
-			panel_stage3.PerformLayout();
+			panel_stageDownload.ResumeLayout(false);
+			panel_stageDownload.PerformLayout();
 			panel_navigation.ResumeLayout(false);
 			panel_navigation.PerformLayout();
 			panel_stage5.ResumeLayout(false);
 			panel_stage5.PerformLayout();
-			panel_stage4.ResumeLayout(false);
-			panel_stage4.PerformLayout();
+			panel_stageEnd.ResumeLayout(false);
+			panel_stageEnd.PerformLayout();
 			ResumeLayout(false);
 		}
 
 		#endregion
-		private Panel panel_stage1;
+		private Panel panel_stageLanding;
 		private Button button_quit;
 		private Button button_start;
 		private FolderBrowserDialog folderBrowserDialog1;
 		private RichTextBox richTextBox_pd2InstallPath;
-		private Panel panel_stage2;
-		private Panel panel_stage3;
+		private Panel panel_stagePreDownload;
+		private Panel panel_stageDownload;
 		private LinkLabel linkLabelWiki;
 		private LinkLabel linkLabelHomepage;
 		private LinkLabel linkLabelDiscord;
@@ -767,9 +789,9 @@
 		private Button button_browseInstallPath;
 		private Label label_browseInstallPathDesc;
 		private Label label_stage1Title;
-		private Label label_stage2Title;
-		private Label label_stage3Title;
-		private Label label_stage3Desc;
+		private Label label_stagePreDownload_Title;
+		private Label label_stageDownload_Title;
+		private Label label_stagePreDownload_Desc_1;
 		private ToolTip toolTip1;
 		private Label label_installedModsList;
 		private Label label_missingModsList;
@@ -778,7 +800,7 @@
 		private SplitContainer splitContainer1;
 		private PictureBox pictureBox_cdLogo;
 		private Label label_stage3_arrow;
-		private Panel panel_stage4;
+		private Panel panel_stageEnd;
 		private ProgressBar progressBar_downloadIndividual;
 		private Label label_downloadStatusDesc;
 		private Label label_downloadStatusTitle;
@@ -788,7 +810,7 @@
 		private Label label_navigation_stage3;
 		private Label label_navigation_stage2;
 		private Label label_navigation_stage1;
-		private Label label_endTitle;
+		private Label label_stageEnd_Title;
 		private Label label_endDesc;
 		private Button button_openTempFolder;
 		private Button button_finalQuit;
@@ -796,9 +818,11 @@
 		private Label label_navigation_stage5;
 		private Label label_communityTitle;
 		private Label label_stage1Desc;
-		private Label label_stage3Desc_2;
+		private Label label_stagePreDownload_Desc_2;
 		private Label label_installPathTitle;
 		private ListBox listBox_downloadFailedList;
 		private LinkLabel linkLabelTroubleshooting;
+		private Panel panel_stageRegistryPathFix;
+		private Button button_RegistryPathFix;
 	}
 }

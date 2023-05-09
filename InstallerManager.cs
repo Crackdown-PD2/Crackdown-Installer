@@ -13,26 +13,26 @@ namespace Crackdown_Installer
 {
 	internal class InstallerManager
 	{
-		private const bool DOWNLOAD_CLOBBER_ENABLED = true;
 		// if true, allows file downloads to replace existing files by the same name.
 		// must be enabled to allow updating existing mods
+		private const bool DOWNLOAD_CLOBBER_ENABLED = true;
 
-		private const bool DEBUG_LOCAL_JSON_HTTPREQ = false;
 		//if true, skips sending an http req for the json file,
 		//and reads a local json file instead.
+		private const bool DEBUG_LOCAL_JSON_HTTPREQ = false;
 
-		private const bool DEBUG_NO_FILE_DOWNLOAD = false;
 		// if true, doesn't download the file at all.
+		private const bool DEBUG_NO_FILE_DOWNLOAD = false;
 
-		private const bool DEBUG_NO_FILE_INSTALL = false;
 		// if true, downloads the files but doesn't actually install any files to their final locations (so as not to interfere with existing installations)
-
-		private const bool DEBUG_NO_FILE_CLEANUP = false;
+		private const bool DEBUG_NO_FILE_INSTALL = false;
+		
 		//if true, skips cleanup step and does not delete zip files and temp folder after installation,
 		//so that you can manually verify them if you wish.
+		private const bool DEBUG_NO_FILE_CLEANUP = false;
 
-		private const bool DEBUG_NO_LOGS = false;
 		// if true, skips writing logs to log file on disk
+		private const bool DEBUG_NO_LOGS = false;
 
 		private const string LOGFILE_NAME = "installer_log.txt";
 		private const string LOCAL_JSON_PATH = "cd_dependencies.json";
@@ -63,13 +63,17 @@ namespace Crackdown_Installer
 
 		private const string STEAM_LIBRARY_MANIFEST_PATH = @"%%STEAM%%\steamapps\libraryfolders.vdf";
 
-		private const string PD2_APPID = "218620"; // Steam appid for PAYDAY 2
+		// Steam appid for PAYDAY 2
+		private const string PD2_APPID = "218620";
 
 		const string ERROR_UNZIP_FAILED = "Could not extract package archive";
 		const string ERROR_DOWNLOAD_FAILED = "Could not download package";
 		const string ERROR_MOVE_FAILED = "Could not move package file(s)";
 
-		const string TEMP_DIRECTORY_NAME = @"temp"; // located in the working directory of the installer application
+		// located in the working directory of the installer application
+		const string TEMP_DIRECTORY_NAME = @"temp";
+
+
 
 		private string? steamInstallDirectory;
 		private string? pd2InstallDirectory;
@@ -85,9 +89,11 @@ namespace Crackdown_Installer
 		private HttpClient httpClientInstance;
 		private StreamWriter? logStreamWriter;
 
-		public List<Pd2ModFolder> installedPd2Mods = new(); // holds information about any mod folders which are placed in both standard install locations (mods, mod_overrides)
+		// holds information about any mod folders which are placed in both standard install locations (mods, mod_overrides)
+		public List<Pd2ModFolder> installedPd2Mods = new();
 
-		public List<Pd2ModData> installedMiscPd2Mods = new(); // holds loose files that are not stored in standard mod folder format, ie modloader dll
+		// holds loose files that are not stored in standard mod folder format, ie modloader dll
+		public List<Pd2ModData> installedMiscPd2Mods = new();
 
 		private JsonDocumentOptions DEFAULT_JSON_OPTIONS = new()
 		{
@@ -108,9 +114,92 @@ namespace Crackdown_Installer
 			{
 				LogMessage("Unable to automatically find PD2 install directory.");
 			}
+		}
 
-			// query cd update server
-			//CollectDependencies();
+		/// <summary>
+		/// Returns the path to the base Steam install directory.
+		/// </summary>
+		/// <returns></returns>
+		public string? GetSteamInstallDirectory()
+		{
+			return steamInstallDirectory;
+		}
+
+		/// <summary>
+		/// Returns the cached installation path for PAYDAY 2.
+		/// </summary>
+		/// <returns></returns>
+		public string GetPd2InstallDirectory()
+		{
+			return pd2InstallDirectory ?? string.Empty;
+		}
+
+		/// <summary>
+		/// Attempts to find the path to the PAYDAY 2 installation,
+		/// using the Steam install location in the registry
+		/// and the Steam library folder manifest vdf file in the Steam install folder.
+		/// Returns true if successful.
+		/// </summary>
+		/// <returns></returns>
+		private string? FindPd2InstallDirectory()
+		{
+
+			//search for steam install directory as stored in registry
+			object? registryValue = Registry.GetValue(KEY_USER_ROOT + @"\" + KEY_VALVE_STEAM, "SteamPath", "");
+			if (registryValue != null)
+			{
+				steamInstallDirectory = registryValue.ToString();
+
+				if (!String.IsNullOrEmpty(steamInstallDirectory))
+				{
+					//find the library folder that contains PAYDAY 2's appid
+					string libraryManifestPath = STEAM_LIBRARY_MANIFEST_PATH.Replace("%%STEAM%%", steamInstallDirectory);
+					if (File.Exists(libraryManifestPath))
+					{
+						//read steam library data,
+						//then search for pd2 install directory in vdf
+
+						try
+						{
+
+							VDFFile libraryFile = new VDFFile(libraryManifestPath);
+							var root = libraryFile.Elements;
+							var libraryFoldersElement = root["libraryfolders"];
+
+							var children = libraryFoldersElement.Children;
+							//for each library folder entry listed:
+							foreach (KeyValuePair<string, NestedElement> a in children)
+							{
+								NestedElement b = a.Value;
+								Dictionary<string, NestedElement> items = b.Children;
+
+								NestedElement libraryPathElement = items["path"];
+								string libraryPath = libraryPathElement.Value;
+								if (!string.IsNullOrEmpty(libraryPath))
+								{
+									NestedElement libraryAppsElement = items["apps"];
+									//foreach item in items["apps"];
+									foreach (KeyValuePair<string, NestedElement> c in libraryAppsElement.Children)
+									{
+										if (c.Key == PD2_APPID)
+										{
+											//do not use Path.Combine here
+											//also replace double-escaped backslashes
+											return (libraryPath + @"\steamapps\common\PAYDAY 2\").Replace(@"\\", @"\");
+										}
+									}
+								}
+							}
+						}
+						catch (Exception e)
+						{
+							LogMessage(e.GetType() + ": Could not read or find Steam library manifest at " + libraryManifestPath + ":");
+							LogMessage(e.Message);
+						}
+					}
+				}
+			}
+			return null;
 		}
 
 		/// <summary>
@@ -410,90 +499,6 @@ namespace Crackdown_Installer
 		}
 		
 		/// <summary>
-		/// Returns the path to the base Steam install directory.
-		/// </summary>
-		/// <returns></returns>
-		public string? GetSteamInstallDirectory()
-		{
-			return steamInstallDirectory;
-		}
-
-		/// <summary>
-		/// Returns the cached installation path for PAYDAY 2.
-		/// </summary>
-		/// <returns></returns>
-		public string GetPd2InstallDirectory() {
-			return pd2InstallDirectory ?? string.Empty;
-		}
-
-		/// <summary>
-		/// Attempts to find the path to the PAYDAY 2 installation,
-		/// using the Steam install location in the registry
-		/// and the Steam library folder manifest vdf file in the Steam install folder.
-		/// Returns true if successful.
-		/// </summary>
-		/// <returns></returns>
-		private string? FindPd2InstallDirectory() {
-
-			//search for steam install directory as stored in registry
-			object? registryValue = Registry.GetValue(KEY_USER_ROOT + @"\" + KEY_VALVE_STEAM, "SteamPath", "");
-			if (registryValue != null)
-			{
-				steamInstallDirectory = registryValue.ToString();
-
-				if (!String.IsNullOrEmpty(steamInstallDirectory))
-				{
-					//find the library folder that contains PAYDAY 2's appid
-					string libraryManifestPath = STEAM_LIBRARY_MANIFEST_PATH.Replace("%%STEAM%%", steamInstallDirectory);
-					if (File.Exists(libraryManifestPath))
-					{
-						//read steam library data,
-						//then search for pd2 install directory in vdf
-
-						try
-						{
-
-							VDFFile libraryFile = new VDFFile(libraryManifestPath);
-							var root = libraryFile.Elements;
-							var libraryFoldersElement = root["libraryfolders"];
-
-							var children = libraryFoldersElement.Children;
-							//for each library folder entry listed:
-							foreach (KeyValuePair<string, NestedElement> a in children)
-							{
-								NestedElement b = a.Value;
-								Dictionary<string, NestedElement> items = b.Children;
-
-								NestedElement libraryPathElement = items["path"];
-								string libraryPath = libraryPathElement.Value;
-								if (!string.IsNullOrEmpty(libraryPath))
-								{
-									NestedElement libraryAppsElement = items["apps"];
-									//foreach item in items["apps"];
-									foreach (KeyValuePair<string, NestedElement> c in libraryAppsElement.Children)
-									{
-										if (c.Key == PD2_APPID)
-										{
-											//do not use Path.Combine here
-											//also replace double-escaped backslashes
-											return (libraryPath + @"\steamapps\common\PAYDAY 2\").Replace(@"\\", @"\");
-										}
-									}
-								}
-							}
-						}
-						catch (Exception e)
-						{
-							LogMessage(e.GetType() + ": Could not read or find Steam library manifest at " + libraryManifestPath + ":");
-							LogMessage(e.Message);
-						}
-					}
-				}
-			}
-			return null;
-		}
-
-		/// <summary>
 		/// Shortcut for JsonElement.TryGetProperty()
 		/// </summary>
 		/// <param name="propertyName"></param>
@@ -746,7 +751,7 @@ namespace Crackdown_Installer
 		}
 
 		/// <summary>
-		/// Creates a temporary directory in the user's Temp folder (by default, in "\AppData\Local\Temp\" )
+		/// Creates a temporary directory in the user's Temp folder (by default, in the same directory as the installer executable)
 		/// and save its information as a member
 		/// </summary>
 		public void CreateTempDirectory()
@@ -817,7 +822,6 @@ namespace Crackdown_Installer
 			}
 			tempDirectoryInfo.CreateSubdirectory(extractDirName);
 			string extractDir = Path.Combine(downloadDir,extractDirName);
-
 			string installDir;
 
 			//info uri should have already been queried during dependency collection
@@ -1239,20 +1243,19 @@ namespace Crackdown_Installer
 
 			public string GetName() { return name; }
 			public string GetDescription() { return description; }
-			public string GetDefinitionType() {  return directoryType; }
+			public string GetDefinitionType() { return directoryType; }
 			public string GetFileName() {  return directoryName; }
 			public string GetProvider() { return provider; }
 			public string? GetHash() { return hash; }
 			public string GetUri() { return uri; }
 			public string GetBranch() { return branch; }
 			public string GetModVersionType() { return versionType; }
-			public string GetModVersionId() {  return versionId; }
+			public string GetModVersionId() { return versionId; }
 			public bool IsOptional() { return isOptional; }
 			public bool IsRelease() { return isRelease; }
 			public string GetDownloadUrl() {  return downloadUrl; }
 
 		}
-
 
 		/// <summary>
 		/// 
