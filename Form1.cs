@@ -1,6 +1,5 @@
 using static Crackdown_Installer.InstallerManager;
 using ZNix.SuperBLT;
-using Microsoft.Win32;
 
 namespace Crackdown_Installer
 {

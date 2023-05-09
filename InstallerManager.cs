@@ -60,6 +60,8 @@ namespace Crackdown_Installer
 
 		private const string KEY_USER_ROOT = "HKEY_CURRENT_USER";
 		private const string KEY_VALVE_STEAM = @"Software\Valve\Steam";
+		//private const string KEY_LOCAL_MACHINE = @"HKEY_LOCAL_MACHINE\SYSTEM";
+		//private const string KEY_FILESYSTEM = @"CurrentControlSet\Control\FileSystem\LongPathsEnabled";
 
 		private const string STEAM_LIBRARY_MANIFEST_PATH = @"%%STEAM%%\steamapps\libraryfolders.vdf";
 

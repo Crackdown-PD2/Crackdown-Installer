@@ -1,10 +1,41 @@
 using Microsoft.Win32;
+using System.Text;
+using System.Runtime.InteropServices;
 using static Crackdown_Installer.InstallerManager;
 
 namespace Crackdown_Installer
 {
 	internal static class InstallerWrapper
 	{
+		[Flags]
+		public enum AssocF
+		{
+			Init_NoRemapCLSID = 0x1,
+			Init_ByExeName = 0x2,
+			Open_ByExeName = 0x2,
+			Init_DefaultToStar = 0x4,
+			Init_DefaultToFolder = 0x8,
+			NoUserSettings = 0x10,
+			NoTruncate = 0x20,
+			Verify = 0x40,
+			RemapRunDll = 0x80,
+			NoFixUps = 0x100,
+			IgnoreBaseClass = 0x200
+		}
+
+		public enum AssocStr
+		{
+			Command = 1,
+			Executable,
+			FriendlyDocName,
+			FriendlyAppName,
+			NoOpen,
+			ShellNewValue,
+			DDECommand,
+			DDEIfExec,
+			DDEApplication,
+			DDETopic
+		}
 
 		public static InstallerManager? instMgr;
 
@@ -80,6 +111,7 @@ namespace Crackdown_Installer
 		{
 			using (StreamWriter a = new(CRASHLOG_PATH))
 			{
+				a.WriteLine(DateTime.Now.ToString());
 				a.WriteLine("Application has crashed:");
 				a.WriteLine(e.ExceptionObject);
 				a.Flush();
@@ -252,26 +284,33 @@ namespace Crackdown_Installer
 			OpenWebLink(URL_CRACKDOWN_INSTRUCTIONS);
 		}
 
+
+		[DllImport("Shlwapi.dll", SetLastError = true, CharSet = CharSet.Auto)]
+		public static extern void AssocQueryString(AssocF flags, AssocStr str, string pszAssoc, string? pszExtra, [Out] StringBuilder? pszOut, [In][Out] ref uint pcchOut);
+		public static string GetAssoc(string assocType)
+		{
+			string? verb = null;
+			UInt32 pcchOut = 0;
+			StringBuilder? sb = null;
+			AssocQueryString(AssocF.Verify, AssocStr.Executable, assocType, verb, sb, ref pcchOut);
+			sb = new((int)pcchOut);
+			AssocQueryString(AssocF.Verify, AssocStr.Executable, assocType, verb, sb, ref pcchOut);
+
+			return sb.ToString();
+		}
+
 		public static string? GetPreferredBrowser()
 		{
 			string? browser = null;
-			RegistryKey? regKey = null;
 
 			try
 			{
-				regKey = Registry.ClassesRoot.OpenSubKey(@"HTTP\shell\open\command", false);
-
-				//LogMessage($"Got regKey {regKey}");
-
-				// get rid of the enclosing quotes
-				browser = regKey?.GetValue(null)?.ToString()?.ToLower().Replace("" + (char)34, "");
-
-				if (browser != null)
+				browser = GetAssoc(".html");
+				if (!String.IsNullOrEmpty(browser))
 				{
 					if (!browser.EndsWith("exe"))
 					{
 						// trim any arguments after the path end (after ".exe")
-						browser = browser.Substring(0, browser.LastIndexOf(".exe") + 4);
 						LogMessage($"Detected default browser {browser}");
 					}
 				}
@@ -279,10 +318,6 @@ namespace Crackdown_Installer
 			catch (Exception e)
 			{
 				LogMessage($"Error getting reg key for default browser: {e.Message}");
-			}
-			finally
-			{
-				regKey?.Close();
 			}
 
 			return browser;
