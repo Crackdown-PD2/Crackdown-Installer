@@ -314,7 +314,7 @@
 			// button_quit
 			// 
 			button_quit.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-			button_quit.Location = new Point(350, 5);
+			button_quit.Location = new Point(365, 5);
 			button_quit.Name = "button_quit";
 			button_quit.Size = new Size(80, 28);
 			button_quit.TabIndex = 2;
@@ -526,7 +526,7 @@
 			// 
 			button_prevStage.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
 			button_prevStage.FlatStyle = FlatStyle.System;
-			button_prevStage.Location = new Point(442, 5);
+			button_prevStage.Location = new Point(457, 5);
 			button_prevStage.Name = "button_prevStage";
 			button_prevStage.Size = new Size(74, 28);
 			button_prevStage.TabIndex = 8;
@@ -537,7 +537,7 @@
 			// button_nextStage
 			// 
 			button_nextStage.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-			button_nextStage.Location = new Point(522, 5);
+			button_nextStage.Location = new Point(537, 5);
 			button_nextStage.Name = "button_nextStage";
 			button_nextStage.Size = new Size(76, 28);
 			button_nextStage.TabIndex = 9;
@@ -556,9 +556,9 @@
 			panel_navigation.Controls.Add(button_nextStage);
 			panel_navigation.Controls.Add(button_prevStage);
 			panel_navigation.Dock = DockStyle.Bottom;
-			panel_navigation.Location = new Point(0, 282);
+			panel_navigation.Location = new Point(0, 321);
 			panel_navigation.Name = "panel_navigation";
-			panel_navigation.Size = new Size(616, 40);
+			panel_navigation.Size = new Size(632, 40);
 			panel_navigation.TabIndex = 10;
 			panel_navigation.Paint += panel4_Paint;
 			// 
@@ -637,7 +637,7 @@
 			// 
 			panel_stage5.Anchor = AnchorStyles.None;
 			panel_stage5.Controls.Add(label_navigation_stage5);
-			panel_stage5.Location = new Point(1297, 323);
+			panel_stage5.Location = new Point(1305, 342);
 			panel_stage5.Name = "panel_stage5";
 			panel_stage5.Size = new Size(632, 293);
 			panel_stage5.TabIndex = 16;
@@ -729,7 +729,7 @@
 			AutoScaleDimensions = new SizeF(7F, 15F);
 			AutoScaleMode = AutoScaleMode.Font;
 			BackColor = SystemColors.Control;
-			ClientSize = new Size(616, 322);
+			ClientSize = new Size(632, 361);
 			Controls.Add(panel_stageRegistryPathFix);
 			Controls.Add(panel_stage5);
 			Controls.Add(panel_stageDownload);
